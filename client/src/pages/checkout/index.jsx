@@ -145,10 +145,119 @@ const Checkout = () => {
       }),
     };
 
-  
+    // Development mode - bypass payment gateway
+    // Generate a fake payment ID for development
+    const fakePaymentId = "dev_" + Math.random().toString(36).substring(2, 15);
+    
+    const user = JSON.parse(localStorage.getItem("user"));
+    
+    const payLoad = {
+      name: addressInfo.name,
+      phoneNumber: formFields.phoneNumber,
+      address: addressInfo.address,
+      pincode: addressInfo.pincode,
+      amount: parseInt(totalAmount),
+      paymentId: fakePaymentId,
+      email: user.email,
+      userid: user.userId,
+      products: cartData,
+      date: addressInfo?.date
+    };
+    
+    console.log("Development mode - bypassing payment gateway");
+    console.log(payLoad);
+    
+    // Show loading indicator
+    context.setAlertBox({
+      open: true,
+      error: false,
+      msg: "Processing your order...",
+    });
+    
+    postData(`/api/orders/create`, payLoad)
+      .then((res) => {
+        fetchDataFromApi(`/api/cart?userId=${user?.userId}`)
+          .then((res) => {
+            if (res && Array.isArray(res) && res.length !== 0) {
+              // Process each cart item
+              const deletePromises = res.map((item) => {
+                if (item && item.id) {
+                  return deleteData(`/api/cart/${item.id}`).catch(err => {
+                    console.error("Error deleting cart item:", err);
+                    return null;
+                  });
+                }
+                return Promise.resolve(null);
+              });
+              
+              // Wait for all delete operations to complete
+              Promise.all(deletePromises)
+                .then(() => {
+                  // Show success message
+                  context.setAlertBox({
+                    open: true,
+                    error: false,
+                    msg: "Order placed successfully!",
+                  });
+                  
+                  // Update cart data and redirect
+                  setTimeout(() => {
+                    context.getCartData();
+                    history("/orders");
+                  }, 1000);
+                })
+                .catch(err => {
+                  console.error("Error processing cart items:", err);
+                  // Still show success and redirect
+                  context.setAlertBox({
+                    open: true,
+                    error: false,
+                    msg: "Order placed successfully!",
+                  });
+                  setTimeout(() => {
+                    context.getCartData();
+                    history("/orders");
+                  }, 1000);
+                });
+            } else {
+              // Handle empty cart case
+              context.setAlertBox({
+                open: true,
+                error: false,
+                msg: "Order placed successfully!",
+              });
+              setTimeout(() => {
+                context.getCartData();
+                history("/orders");
+              }, 1000);
+            }
+          })
+          .catch(err => {
+            console.error("Error fetching cart data:", err);
+            // Still show success and redirect
+            context.setAlertBox({
+              open: true,
+              error: false,
+              msg: "Order placed successfully!",
+            });
+            setTimeout(() => {
+              history("/orders");
+            }, 1000);
+          });
+      })
+      .catch(err => {
+        console.error("Error creating order:", err);
+        context.setAlertBox({
+          open: true,
+          error: true,
+          msg: "There was a problem processing your order. Please try again.",
+        });
+      });
+      
+    // Razorpay integration code - commented out for development
+    /*
     var options = {
       key: process.env.REACT_APP_RAZORPAY_KEY_ID,
-      key_secret: process.env.REACT_APP_RAZORPAY_KEY_SECRET,
       amount: parseInt(totalAmount * 100),
       currency: "INR",
       order_receipt: "order_rcptid_" + formFields.fullName,
@@ -174,21 +283,42 @@ const Checkout = () => {
           date:addressInfo?.date
         };
 
-        console.log(payLoad)
+        console.log(payLoad);
           
-
         postData(`/api/orders/create`, payLoad).then((res) => {
-             fetchDataFromApi(`/api/cart?userId=${user?.userId}`).then((res) => {
-            res?.length!==0 && res?.map((item)=>{
-                deleteData(`/api/cart/${item?.id}`).then((res) => {
-                })    
-            })
-                setTimeout(()=>{
-                    context.getCartData();
-                },1000);
-                history("/orders");
+          fetchDataFromApi(`/api/cart?userId=${user?.userId}`).then((res) => {
+            if (res && Array.isArray(res) && res.length !== 0) {
+              res.forEach((item) => {
+                if (item && item.id) {
+                  deleteData(`/api/cart/${item.id}`).then(() => {
+                    // Success handling if needed
+                  }).catch(err => {
+                    console.error("Error deleting cart item:", err);
+                  });
+                }
+              });
+              
+              setTimeout(() => {
+                context.getCartData();
+              }, 1000);
+              history("/orders");
+            } else {
+              // Handle empty cart case
+              context.getCartData();
+              history("/orders");
+            }
+          }).catch(err => {
+            console.error("Error fetching cart data:", err);
+            // Still navigate to orders even if there's an error
+            history("/orders");
           });
-         
+        }).catch(err => {
+          console.error("Error creating order:", err);
+          context.setAlertBox({
+            open: true,
+            error: true,
+            msg: "There was a problem processing your order. Please try again.",
+          });
         });
       },
 
@@ -199,8 +329,7 @@ const Checkout = () => {
 
     var pay = new window.Razorpay(options);
     pay.open();
-
-
+    */
   };
 
   return (
