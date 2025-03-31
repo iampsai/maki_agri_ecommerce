@@ -1,0 +1,33 @@
+
+.cartSection{width: 100%; height: auto; padding: 10px 0px;}
+.cartSection .clearCart{font-weight: 600; font-size: 18px;}
+.cartSection .clearCart svg{font-size: 25px !important;}
+
+.cartWrapper table thead{background: #f1f1f1; overflow: hidden; }
+
+.cartWrapper table thead th{font-size: 14px ;}
+.cartWrapper table thead th:first-child{border-top-left-radius: 15px; border-bottom-left-radius: 15px;}
+.cartWrapper table thead th:last-child{border-top-right-radius: 15px; border-bottom-right-radius: 15px;}
+
+.cartWrapper table tbody td{vertical-align: middle;}
+.cartWrapper table tbody td .img{width: 20%; height: 80px; padding: 5px; border: 1px solid rgba(0,0,0,0.1); border-radius: 5px;}
+.cartWrapper table tbody td .img img{width: 100%; height: 100%; object-fit: cover;}
+.cartWrapper table tbody td .info{width: 70%;}
+.cartWrapper table tbody td .info h4{font-size: 15px; margin-bottom: 0px; font-weight: 600;}
+.cartWrapper table tbody td .info a{color: rgba(0,0,0,0.7);}
+.cartWrapper table tbody td .info a:hover{text-decoration: none;}
+
+.cartWrapper table tbody td span{font-weight: 600; font-size: 16px;}
+.cartWrapper table tbody td span.text-g{font-weight: bold; white-space: nowrap;}
+.cartWrapper table tbody td span.text-light{font-size: 16px; position: relative; top: -2px;}
+
+.cartWrapper table tbody td span svg{font-size: 22px;}
+
+.cartRightBox{padding-left: 100px;}
+.cartRightBox .card{position: sticky; top: 150px;}
+
+.cartRightBox .card h5{font-size: 16px;}
+.cartRightBox .card h3{font-size: 18px;}
+
+
+.myListWrapper{width: 70%; margin: auto;}

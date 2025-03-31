@@ -1,0 +1,61 @@
+.nav{width: 100%; height: 60px; margin: auto; border-top: 1px solid rgba(0,0,0,0.1); border-bottom: 1px solid rgba(0,0,0,0.1);}
+
+
+.nav .part1{max-width: 20%; flex: 0 0 20%;}
+.nav .part2{max-width: 63%; flex: 0 0 63%;}
+.nav .part3{max-width: 17%; flex: 0 0 17%;}
+
+.nav .catTab{padding: 6px 15px !important; font-size: 12px !important; text-transform: capitalize !important;}
+.nav .catTab svg{font-size: 15px !important;}
+
+.nav nav ul li{position: relative; margin-right: 0px !important;}
+.nav nav ul li button{text-transform: capitalize !important; padding: 0px !important; color: #3bb77e !important; border-radius: 0px !important; }
+.nav nav ul li button a{text-decoration: none !important; color: rgba(0,0,0,0.9) !important;  font-size: 14px;  padding: 16px 15px !important; width: 100% !important;}
+.nav nav ul li button svg{font-size: 18px !important; color: rgba(0,0,0,0.8) !important;}
+
+.nav .part3 .phNo svg{ font-size: 30px !important; color: rgba(0,0,0,0.8);}
+.nav .part3 .phNo h3{ font-size:16px !important; line-height: 22px !important; font-weight: 600;}
+.nav .part3 .phNo p{ font-size: 13px !important; color: rgba(0,0,0,0.8);}
+
+.nav nav .dropdown_menu{position: absolute; top: 170%; left: 0px; width:200px; height: auto;  background: #fff;  box-shadow: 0 3px 6px rgba(0,0,0,0.16), 0 3px 6px rgba(0,0,0,0.23); padding: 10px 0px; z-index: 100; opacity: 0; visibility: hidden; transition: all 0.2s ease-in-out;}
+nav .dropdown_menu li{width: 100% !important; list-style: none; margin: 0px !important;}
+.nav nav .dropdown_menu li button{width: 100% !important; text-align: left !important; justify-content: flex-start !important;  text-transform: capitalize !important; font-size: 13px !important; padding: 6px 18px !important; color: #3bb77e !important;}
+
+.nav nav .dropdown_menu li button a{font-weight: 500 !important; font-size: 13px !important;
+display: block; width: 100%; padding: 0px !important; color: rgba(0,0,0,0.8) !important;}
+
+nav .dropdown_menu li button:hover{background: #f1f1f1 !important;}
+
+.nav nav li:hover .dropdown_menu {top: 102%; opacity: 1; visibility: inherit;}
+
+.megaMenu{height: auto !important; padding: 40px 45px !important;}
+
+.megaMenu .col ul li{margin-bottom: 0px !important; display: block;}
+.megaMenu .col ul li a{color: rgba(0,0,0,0.7); font-size: 14px; text-decoration: none;}
+.megaMenu .col h4{font-size: 16px; font-weight: 600; margin-bottom: 0px;}
+
+.sidebarNav{width: 100%; height: 0px; opacity: 0; background: #fff; position: absolute; top: 103%; left: 0px; border: 1px solid rgba(0,0,0,0.1); padding: 15px 0px; transition: all 0.2s; visibility: hidden; z-index: 100;}
+
+.sidebarNav.open{height: auto; opacity: 1; visibility: inherit;}
+
+.sidebarNav ul li{width: 100%; list-style: none; padding: 0px 10px;}
+.sidebarNav ul li button{ text-align: left !important; color: #000; width: 100%; justify-content: flex-start; text-transform: capitalize !important;  }
+
+.sidebarNav ul li button svg{font-size: 17px !important; opacity: 0.6;}
+
+.sidebarNav ul li button:hover{background: transparent !important; color: #35ac75 !important;}
+
+.sidebarNav ul li:hover button:first-child{color: #35ac75 !important;}
+
+.sidebarNav ul li{position: static;}
+
+ .sidebarNav ul li .submenu{position: absolute; top: 0px; left: 105%;
+width: 250px; height: 100%; background: #fff; z-index: 100; opacity: 0; visibility: hidden;
+transition: all 0.2s ease-in-out; border-left: 1px solid rgba(0,0,0,0.1); padding: 20px;}
+
+ .sidebarNav ul li:hover .submenu{opacity: 1; visibility: inherit; left: 100%;}
+
+ .sidebarNav ul li:hover .submenu button{border-radius: 0px !important; color: #000 !important;}
+
+
+ .sidebarNav ul li .submenu button:hover{color: #7a55c1 !important;}
