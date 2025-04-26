@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useMemo } from "react";
 import { MyContext } from "../../App";
 import { fetchDataFromApi } from "../../utils/api";
 import "./reports.css";
@@ -56,15 +56,16 @@ const Reports = () => {
       
       console.log("Sales API response:", salesResponse);
       
-      if (salesResponse && salesResponse.success) {
-        setSalesData(salesResponse.data || []);
-        console.log("Using API sales data");
-      } else {
-        // Use mock data as fallback
-        console.log("Using mock sales data");
-        const mockSalesData = generateMockSalesData();
-        setSalesData(mockSalesData);
+      if (!salesResponse) {
+        throw new Error('No response received from sales API');
       }
+
+      if (!salesResponse.success) {
+        throw new Error(salesResponse.message || 'Failed to fetch sales data');
+      }
+
+      setSalesData(salesResponse.data.periods || []);
+      console.log("Using API sales data:", salesResponse.data);
       
       // Fetch inventory data
       console.log("Fetching inventory data...");
@@ -72,15 +73,16 @@ const Reports = () => {
       
       console.log("Inventory API response:", inventoryResponse);
       
-      if (inventoryResponse && inventoryResponse.success) {
-        setInventoryData(inventoryResponse.data || []);
-        console.log("Using API inventory data");
-      } else {
-        // Use mock data as fallback
-        console.log("Using mock inventory data");
-        const mockInventoryData = generateMockInventoryData();
-        setInventoryData(mockInventoryData);
+      if (!inventoryResponse) {
+        throw new Error('No response received from inventory API');
       }
+
+      if (!inventoryResponse.success) {
+        throw new Error(inventoryResponse.message || 'Failed to fetch inventory data');
+      }
+
+      setInventoryData(inventoryResponse.data || []);
+      console.log("Using API inventory data");
       
       // Fetch customer data
       console.log("Fetching customer data...");
@@ -90,15 +92,16 @@ const Reports = () => {
       
       console.log("Customer API response:", customerResponse);
       
-      if (customerResponse && customerResponse.success) {
-        setCustomerData(customerResponse.data || {});
-        console.log("Using API customer data");
-      } else {
-        // Use mock data as fallback
-        console.log("Using mock customer data");
-        const mockCustomerData = generateMockCustomerData();
-        setCustomerData(mockCustomerData);
+      if (!customerResponse) {
+        throw new Error('No response received from customer API');
       }
+
+      if (!customerResponse.success) {
+        throw new Error(customerResponse.message || 'Failed to fetch customer data');
+      }
+
+      setCustomerData(customerResponse.data || {});
+      console.log("Using API customer data");
       
       context.setProgress(100);
     } catch (error) {
@@ -106,126 +109,18 @@ const Reports = () => {
       context.setAlertBox({
         open: true,
         error: true,
-        msg: "Failed to load report data. Using mock data temporarily."
+        msg: error.message || "Failed to load report data. Please try again."
       });
       
-      // Use mock data as fallback
-      console.log("Using mock data due to error");
-      const mockSalesData = generateMockSalesData();
-      setSalesData(mockSalesData);
-      
-      const mockInventoryData = generateMockInventoryData();
-      setInventoryData(mockInventoryData);
-      
-      const mockCustomerData = generateMockCustomerData();
-      setCustomerData(mockCustomerData);
+      // Reset data states on error
+      setSalesData([]);
+      setInventoryData([]);
+      setCustomerData({});
       
       context.setProgress(100);
     } finally {
       setLoading(false);
     }
-  };
-
-  // Generate mock sales data for development or fallback
-  const generateMockSalesData = () => {
-    const periods = reportType === 'daily' ? 14 : reportType === 'weekly' ? 8 : 6;
-    const result = [];
-    
-    for (let i = 0; i < periods; i++) {
-      const date = new Date();
-      date.setDate(date.getDate() - (i * (reportType === 'daily' ? 1 : reportType === 'weekly' ? 7 : 30)));
-      
-      let periodLabel = '';
-      if (reportType === 'daily') {
-        periodLabel = `${date.getMonth()+1}/${date.getDate()}`;
-      } else if (reportType === 'weekly') {
-        periodLabel = `Week ${periods-i}`;
-      } else {
-        periodLabel = `${date.toLocaleString('default', { month: 'short' })}`;
-      }
-      
-      result.push({
-        period: periodLabel,
-        totalSales: Math.floor(Math.random() * 10000) + 1000,
-        orderCount: Math.floor(Math.random() * 50) + 10
-      });
-    }
-    
-    return result.reverse(); // Most recent last
-  };
-
-  // Generate mock inventory data for development or fallback
-  const generateMockInventoryData = () => {
-    const products = [
-      { name: "Organic Potato", category: { name: "Vegetables" } },
-      { name: "Fresh Carrots", category: { name: "Vegetables" } },
-      { name: "Garden Tomatoes", category: { name: "Vegetables" } },
-      { name: "Red Onions", category: { name: "Vegetables" } },
-      { name: "Green Peas", category: { name: "Vegetables" } },
-      { name: "Red Apples", category: { name: "Fruits" } },
-      { name: "Sweet Oranges", category: { name: "Fruits" } },
-      { name: "Ripe Bananas", category: { name: "Fruits" } },
-      { name: "Chicken Feed", category: { name: "Animal Feed" } },
-      { name: "Cattle Feed", category: { name: "Animal Feed" } },
-      { name: "Garden Soil", category: { name: "Garden" } },
-      { name: "Gardening Tools Set", category: { name: "Tools" } },
-      { name: "Farm Gloves", category: { name: "Accessories" } },
-      { name: "Fertilizer 5kg", category: { name: "Fertilizers" } },
-      { name: "Organic Compost", category: { name: "Fertilizers" } }
-    ];
-    
-    return products.map((product, index) => ({
-      id: index + 1,
-      ...product,
-      countInStock: index % 3 === 0 ? 0 : index % 5 === 0 ? Math.floor(Math.random() * 9) + 1 : Math.floor(Math.random() * 50) + 10,
-      price: Math.floor(Math.random() * 50) + 5
-    }));
-  };
-
-  // Generate mock customer data for development or fallback
-  const generateMockCustomerData = () => {
-    const topCustomers = [
-      { name: "John Smith", email: "john@example.com", totalSpent: 1240.50, orderCount: 12 },
-      { name: "Mary Johnson", email: "mary@example.com", totalSpent: 980.25, orderCount: 8 },
-      { name: "David Lee", email: "david@example.com", totalSpent: 720.00, orderCount: 6 },
-      { name: "Sarah Williams", email: "sarah@example.com", totalSpent: 650.75, orderCount: 5 },
-      { name: "Michael Brown", email: "michael@example.com", totalSpent: 520.30, orderCount: 4 },
-      { name: "Lisa Davis", email: "lisa@example.com", totalSpent: 480.50, orderCount: 3 },
-      { name: "Robert Wilson", email: "robert@example.com", totalSpent: 350.25, orderCount: 2 },
-      { name: "Jennifer Moore", email: "jennifer@example.com", totalSpent: 320.00, orderCount: 2 }
-    ];
-    
-    // Customer activity over time
-    const periods = reportType === 'daily' ? 14 : reportType === 'weekly' ? 8 : 6;
-    const customerActivity = [];
-    
-    for (let i = 0; i < periods; i++) {
-      const date = new Date();
-      date.setDate(date.getDate() - (i * (reportType === 'daily' ? 1 : reportType === 'weekly' ? 7 : 30)));
-      
-      let periodLabel = '';
-      if (reportType === 'daily') {
-        periodLabel = `${date.getMonth()+1}/${date.getDate()}`;
-      } else if (reportType === 'weekly') {
-        periodLabel = `Week ${periods-i}`;
-      } else {
-        periodLabel = `${date.toLocaleString('default', { month: 'short' })}`;
-      }
-      
-      customerActivity.push({
-        period: periodLabel,
-        newCustomers: Math.floor(Math.random() * 20) + 5,
-        activeCustomers: Math.floor(Math.random() * 50) + 20
-      });
-    }
-    
-    return {
-      totalCustomers: 450,
-      newCustomers: 35,
-      activeCustomers: 120,
-      topCustomers,
-      customerActivity: customerActivity.reverse()
-    };
   };
 
   // Handle tab change
@@ -317,14 +212,18 @@ const Reports = () => {
     }
   };
 
-  // Calculate summary data for sales
-  const getSalesStats = () => {
+  // Get summary data for sales
+  const getSalesStats = useMemo(() => {
+    if (!salesData || salesData.length === 0) {
+      return { totalSales: 0, totalOrders: 0, avgOrderValue: 0 };
+    }
+    
     const totalSales = salesData.reduce((sum, item) => sum + (item.totalSales || 0), 0);
     const totalOrders = salesData.reduce((sum, item) => sum + (item.orderCount || 0), 0);
     const avgOrderValue = totalOrders > 0 ? totalSales / totalOrders : 0;
     
     return { totalSales, totalOrders, avgOrderValue };
-  };
+  },[salesData]);
 
   // Calculate summary data for inventory
   const getInventoryStats = () => {
@@ -457,7 +356,7 @@ const Reports = () => {
               className="btn btn-primary export-btn"
               onClick={handleExportClick}
             >
-              Export PDF
+              Export CSV
             </button>
           </div>
           
@@ -496,19 +395,19 @@ const Reports = () => {
             <div className="tab-content">
               {/* Sales Report */}
               {tabValue === 0 && (
-                <div className="tab-pane">
+                <div className="tab-panel">
                   <div className="stat-cards">
                     <div className="stat-card">
                       <h3>Total Sales</h3>
-                      <div className="stat-value">${getSalesStats().totalSales.toFixed(2)}</div>
+                      <div className="stat-value">P{getSalesStats.totalSales.toFixed(2)}</div>
                     </div>
                     <div className="stat-card">
                       <h3>Total Orders</h3>
-                      <div className="stat-value">{getSalesStats().totalOrders}</div>
+                      <div className="stat-value">{getSalesStats.totalOrders}</div>
                     </div>
                     <div className="stat-card">
                       <h3>Average Order</h3>
-                      <div className="stat-value">${getSalesStats().avgOrderValue.toFixed(2)}</div>
+                      <div className="stat-value">P{getSalesStats.avgOrderValue.toFixed(2)}</div>
                     </div>
                   </div>
                   
@@ -526,9 +425,9 @@ const Reports = () => {
                         {paginateData(salesData).map((row, index) => (
                           <tr key={index}>
                             <td>{row.period}</td>
-                            <td>${row.totalSales.toFixed(2)}</td>
+                            <td>P{row.totalSales.toFixed(2)}</td>
                             <td>{row.orderCount}</td>
-                            <td>${(row.totalSales / row.orderCount).toFixed(2)}</td>
+                            <td>P{(row.totalSales / row.orderCount).toFixed(2)}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -541,7 +440,7 @@ const Reports = () => {
               
               {/* Inventory Report */}
               {tabValue === 1 && (
-                <div className="tab-pane">
+                <div className="tab-panel">
                   <div className="stat-cards">
                     <div className="stat-card">
                       <h3>Total Products</h3>
@@ -573,7 +472,7 @@ const Reports = () => {
                           <tr key={row.id}>
                             <td>{row.name}</td>
                             <td>{row.category.name}</td>
-                            <td>${row.price.toFixed(2)}</td>
+                            <td>P{row.price.toFixed(2)}</td>
                             <td>{row.countInStock}</td>
                             <td>
                               <span className={`status-badge ${getStockStatusClass(row.countInStock)}`}>
@@ -592,17 +491,17 @@ const Reports = () => {
               
               {/* Customer Report */}
               {tabValue === 2 && (
-                <div className="tab-pane">
+                <div className="tab-panel">
                   <div className="stat-cards">
                     <div className="stat-card">
                       <h3>Total Customers</h3>
                       <div className="stat-value">{customerData.totalCustomers}</div>
                     </div>
-                    <div className="stat-card">
+                    <div className="stat-card new">
                       <h3>New Customers</h3>
                       <div className="stat-value">{customerData.newCustomers}</div>
                     </div>
-                    <div className="stat-card">
+                    <div className="stat-card active">
                       <h3>Active Customers</h3>
                       <div className="stat-value">{customerData.activeCustomers}</div>
                     </div>
@@ -624,7 +523,7 @@ const Reports = () => {
                           <tr key={index}>
                             <td>{row.name}</td>
                             <td>{row.email}</td>
-                            <td>${row.totalSpent.toFixed(2)}</td>
+                            <td>P{row.totalSpent.toFixed(2)}</td>
                             <td>{row.orderCount}</td>
                           </tr>
                         ))}

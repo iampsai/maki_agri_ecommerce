@@ -19,14 +19,21 @@ export const fetchDataFromApi = async (url) => {
             'Content-Type': 'application/json'
         };
         
+        const baseUrl = 'http://localhost:8080';
+        
         // For debugging purposes - show what URL is being called
-        console.log(`API Request to: ${process.env.REACT_APP_BASE_URL + url}`);
+        console.log(`API Request to: ${baseUrl + url}`);
         
         // Make the request
-        const { data } = await axios.get(process.env.REACT_APP_BASE_URL + url, { headers })
+        const { data } = await axios.get(baseUrl + url, { headers })
         
-        // For reports endpoints, wrap the response in the success format if not already done
-        if (url.includes('/api/reports/') && !data.hasOwnProperty('success')) {
+        // For reports endpoints, ensure proper response format
+        if (url.includes('/api/reports/')) {
+            // If data is already in the correct format with success property
+            if (data.hasOwnProperty('success')) {
+                return data;
+            }
+            // Otherwise wrap the response in the success format
             return {
                 success: true,
                 data: data

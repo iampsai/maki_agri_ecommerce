@@ -9,20 +9,32 @@ const jwtMiddleware = authJwt();
 // Middleware to ensure only admins can access reports
 const verifyAdminRole = async (req, res, next) => {
     try {
-        // For development/testing, temporarily allow all requests
-        // Comment out this line in production
-        return next();
-        
-        // Below is the production version
-        if (req.user && req.user.isAdmin) {
-            return next();
+        if (!req.auth) {
+            return res.status(401).json({
+                success: false,
+                message: 'Authentication required'
+            });
         }
-        
-        // If user data exists but not admin
-        return res.status(403).json({ 
-            success: false, 
-            message: 'Admin access required' 
-        });
+
+        // Get user from database using the ID from the token
+        const user = await User.findById(req.auth.id);
+        if (!user) {
+            return res.status(401).json({
+                success: false,
+                message: 'User not found'
+            });
+        }
+
+        if (!user.isAdmin) {
+            return res.status(403).json({
+                success: false,
+                message: 'Admin access required'
+            });
+        }
+
+        // Add user to request for later use
+        req.user = user;
+        return next();
     } catch (error) {
         console.error('Admin verification error:', error);
         return res.status(500).json({ 
@@ -49,19 +61,23 @@ router.get('/sales', jwtMiddleware, verifyAdminRole, async (req, res) => {
             status: { $nin: ['cancelled', 'refunded'] }
         }).sort({ date: 1 });
         
-        if (!orders.length) {
-            return res.status(200).json({
-                success: true,
-                data: []
-            });
-        }
-        
         // Process data based on report type
-        const salesData = processOrdersByTimePeriod(orders, type);
+        const salesData = processOrdersByTimePeriod(orders || [], type);
+        
+        // Calculate summary data
+        const totalSales = salesData.reduce((sum, item) => sum + item.totalSales, 0);
+        const totalOrders = salesData.reduce((sum, item) => sum + item.orderCount, 0);
         
         return res.status(200).json({
             success: true,
-            data: salesData
+            data: {
+                periods: salesData,
+                summary: {
+                    totalSales,
+                    totalOrders,
+                    avgOrderValue: totalOrders > 0 ? totalSales / totalOrders : 0
+                }
+            }
         });
     } catch (error) {
         console.error("Error in sales report:", error);
@@ -132,7 +148,7 @@ router.get('/customers', jwtMiddleware, verifyAdminRole, async (req, res) => {
             if (!order.userid) return;
             
             const userId = order.userid;
-            const userInfo = userMap[userId] || { name: 'Unknown', email: order.email || 'unknown@email.com' };
+            const userInfo = userMap[userId] || { name: order.name, email: order.email || 'unknown@email.com' };
             
             if (!customerOrders[userId]) {
                 customerOrders[userId] = {
