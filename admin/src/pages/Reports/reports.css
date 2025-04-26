@@ -1,0 +1,279 @@
+/* Reports Component Styles */
+
+/* Main layout */
+.report-controls {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.form-group {
+  display: flex;
+  flex-direction: column;
+  min-width: 150px;
+}
+
+.form-group label {
+  margin-bottom: 0.5rem;
+  font-weight: 500;
+}
+
+.form-control {
+  padding: 0.5rem;
+  border: 1px solid #ccc;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.btn {
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: background-color 0.2s;
+}
+
+.btn-primary {
+  background-color: #1976d2;
+  color: white;
+}
+
+.btn-primary:hover {
+  background-color: #1565c0;
+}
+
+.export-btn {
+  height: 38px;
+}
+
+/* Tabs */
+.report-tabs {
+  margin-bottom: 1rem;
+}
+
+.tab-buttons {
+  display: flex;
+  border-bottom: 1px solid #ddd;
+}
+
+.tab-button {
+  padding: 0.7rem 1.5rem;
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-weight: 500;
+  color: #555;
+  transition: all 0.2s;
+}
+
+.tab-button:hover {
+  color: #1976d2;
+}
+
+.tab-button.active {
+  color: #1976d2;
+  border-bottom: 2px solid #1976d2;
+}
+
+/* Stat Cards */
+.stat-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.stat-card {
+  flex: 1;
+  min-width: 200px;
+  padding: 1.5rem;
+  background-color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  text-align: center;
+}
+
+.stat-card h3 {
+  margin-top: 0;
+  margin-bottom: 0.5rem;
+  font-size: 1rem;
+  color: #666;
+}
+
+.stat-card .stat-value {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #333;
+}
+
+.status-out {
+  border-left: 4px solid #f44336;
+}
+
+.status-out .stat-value {
+  color: #f44336;
+}
+
+.status-low {
+  border-left: 4px solid #ff9800;
+}
+
+.status-low .stat-value {
+  color: #ff9800;
+}
+
+.status-in {
+  border-left: 4px solid #4caf50;
+}
+
+/* Tables */
+.table-responsive {
+  overflow-x: auto;
+  margin-bottom: 1.5rem;
+}
+
+.report-table {
+  width: 100%;
+  border-collapse: collapse;
+  background-color: #fff;
+}
+
+.report-table th,
+.report-table td {
+  padding: 0.8rem;
+  text-align: left;
+  border-bottom: 1px solid #eee;
+}
+
+.report-table th {
+  background-color: #f5f5f5;
+  font-weight: 500;
+}
+
+.report-table tr:hover {
+  background-color: #f9f9f9;
+}
+
+/* Status Badges */
+.status-badge {
+  display: inline-block;
+  padding: 0.25rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.status-badge.status-out {
+  background-color: #ffebee;
+  color: #f44336;
+  border: 1px solid #ef9a9a;
+}
+
+.status-badge.status-low {
+  background-color: #fff3e0;
+  color: #ff9800;
+  border: 1px solid #ffcc80;
+}
+
+.status-badge.status-in {
+  background-color: #e8f5e9;
+  color: #4caf50;
+  border: 1px solid #a5d6a7;
+}
+
+/* Pagination */
+.pagination {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-top: 1rem;
+}
+
+.page-btn {
+  padding: 0.5rem 1rem;
+  background-color: #f5f5f5;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  cursor: pointer;
+  margin: 0 0.5rem;
+}
+
+.page-btn:disabled {
+  background-color: #eee;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.page-info {
+  font-size: 0.9rem;
+}
+
+/* Loading */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 300px;
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #f3f3f3;
+  border-top: 4px solid #1976d2;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 1rem;
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* Section title */
+.section-title {
+  margin-top: 1.5rem;
+  margin-bottom: 1rem;
+  font-size: 1.2rem;
+  color: #333;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .stat-cards {
+    flex-direction: column;
+  }
+  
+  .filters {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
+  .form-group {
+    width: 100%;
+  }
+  
+  .export-btn {
+    margin-top: 1rem;
+    width: 100%;
+  }
+  
+  .tab-button {
+    padding: 0.5rem 0.8rem;
+    font-size: 0.9rem;
+  }
+}

@@ -545,32 +545,252 @@ router.post(`/forgotPassword`, async (req, res) => {
   }
 });
 
-
 router.post(`/forgotPassword/changePassword`, async (req, res) => {
-    const { email, newPass } = req.body;
-  
-    try {
-  
-      const existingUser = await User.findOne({ email: email });
-  
-      if (existingUser) {
-        const hashPassword = await bcrypt.hash(newPass, 10);
-        existingUser.password = hashPassword;
-        await existingUser.save();
-      }
-     
+  const { email, newPass } = req.body;
 
-      // Send success response
-      return res.status(200).json({
-        success: true,
-        status:"SUCCESS",
-        message: "Password change successfully",
-      });
-    } catch (error) {
-      console.log(error);
-      res.json({ status: "FAILED", msg: "something went wrong" });
-      return;
+  try {
+    const existingUser = await User.findOne({ email: email });
+
+    if (existingUser) {
+      const hashPassword = await bcrypt.hash(newPass, 10);
+      existingUser.password = hashPassword;
+      await existingUser.save();
     }
-  });
+
+    // Send success response
+    return res.status(200).json({
+      success: true,
+      status: "SUCCESS",
+      message: "Password change successfully",
+    });
+  } catch (error) {
+    console.log(error);
+    res.json({ status: "FAILED", msg: "something went wrong" });
+    return;
+  }
+});
+
+// Admin-specific user management routes - Add middleware to verify admin role
+const verifyAdminRole = async (req, res, next) => {
+  try {
+    // Get token from authorization header
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith('Bearer ')) {
+      console.log("No token provided in authorization header");
+      return res.status(401).json({
+        success: false,
+        msg: "Unauthorized - No token provided"
+      });
+    }
+    
+    const token = authHeader.split(' ')[1];
+    console.log("Verifying admin token...");
+    
+    // Use the same secret key that was used to sign the token
+    // This must match the key used in the signin route
+    jwt.verify(token, process.env.JSON_WEB_TOKEN_SECRET_KEY, async (err, decoded) => {
+      if (err) {
+        console.error("JWT verification error:", err.message);
+        return res.status(401).json({
+          success: false,
+          msg: "Unauthorized - Invalid token"
+        });
+      }
+      
+      console.log("Decoded token payload:", decoded);
+      
+      // Get user ID from token - handle different token formats
+      // In the signin route, the ID is stored as 'id'
+      const userId = decoded.id || decoded._id || decoded.userId || decoded.sub;
+      
+      if (!userId) {
+        console.error("No user ID found in token payload");
+        return res.status(401).json({
+          success: false,
+          msg: "Invalid token format - user ID not found"
+        });
+      }
+      
+      console.log("Looking up user with ID:", userId);
+      
+      // Check if user exists
+      const user = await User.findById(userId);
+      if (!user) {
+        console.error("User not found with ID:", userId);
+        return res.status(404).json({
+          success: false,
+          msg: "User not found"
+        });
+      }
+      
+      console.log("User found:", user.email, "Role:", user.role, "isAdmin:", user.isAdmin);
+      
+      // Check if user has admin role
+      const isAdmin = user.role === 'admin' || user.isAdmin === true;
+      
+      if (!isAdmin) {
+        console.error("User does not have admin privileges:", user.email);
+        return res.status(403).json({
+          success: false,
+          msg: "Forbidden - Admin privileges required"
+        });
+      }
+      
+      console.log("Admin authorization successful for:", user.email);
+      
+      // Admin user verified, proceed
+      req.user = user;
+      next();
+    });
+  } catch (error) {
+    console.error("Error in admin verification middleware:", error);
+    return res.status(500).json({
+      success: false,
+      msg: "Server error during authorization check: " + error.message
+    });
+  }
+};
+
+// Apply admin verification middleware to admin routes
+router.post(`/admin/create`, verifyAdminRole, async (req, res) => {
+  try {
+    const { name, phone, email, password, role, isAdmin, isVerified, images } = req.body;
+
+    // Check if user already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        msg: "User with this email already exists",
+      });
+    }
+
+    // Hash the password
+    const hashPassword = await bcrypt.hash(password, 10);
+    
+    // Create new user with role support
+    const user = new User({
+      name,
+      email,
+      phone,
+      password: hashPassword,
+      images: images || [],
+      role: role || 'user',
+      isAdmin: role === 'admin' || isAdmin || false, // Set isAdmin based on role for backward compatibility
+      isVerified: isVerified || false,
+    });
+
+    await user.save();
+
+    // Send success response
+    return res.status(201).json({
+      success: true,
+      msg: "User created successfully",
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: user.role,
+      },
+    });
+  } catch (error) {
+    console.error("Error creating user:", error);
+    return res.status(500).json({
+      success: false,
+      msg: "Something went wrong while creating user",
+    });
+  }
+});
+
+router.put(`/admin/:id`, verifyAdminRole, async (req, res) => {
+  try {
+    const { name, phone, email, password, role, isAdmin, isVerified, images } = req.body;
+    const userId = req.params.id;
+
+    console.log("Update user request:", { userId, role, isAdmin, name, email });
+
+    // Check if user exists
+    const existingUser = await User.findById(userId);
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        msg: "User not found",
+      });
+    }
+
+    // If email is changed, check if new email already exists
+    if (email !== existingUser.email) {
+      const userWithNewEmail = await User.findOne({ email });
+      if (userWithNewEmail && userWithNewEmail._id.toString() !== userId) {
+        return res.status(400).json({
+          success: false,
+          msg: "Email already in use by another user",
+        });
+      }
+    }
+
+    // Prepare update data
+    const updateData = {
+      name,
+      email,
+      phone,
+      role: role || existingUser.role || (existingUser.isAdmin ? 'admin' : 'user'),
+      isAdmin: role === 'admin' || isAdmin || existingUser.isAdmin,
+      isVerified: isVerified !== undefined ? isVerified : existingUser.isVerified,
+    };
+
+    // If images are provided, update them
+    if (images && images.length > 0) {
+      updateData.images = images;
+    }
+
+    // If password is provided, hash and update it
+    if (password && password.trim() !== "") {
+      updateData.password = await bcrypt.hash(password, 10);
+    }
+
+    console.log("Updating user with data:", updateData);
+
+    // Update user
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      updateData,
+      { new: true, runValidators: true }
+    );
+
+    if (!updatedUser) {
+      console.error("User update failed - user not found after update");
+      return res.status(404).json({
+        success: false,
+        msg: "User not found after update",
+      });
+    }
+
+    console.log("User updated successfully:", {
+      id: updatedUser.id,
+      role: updatedUser.role,
+      isAdmin: updatedUser.isAdmin
+    });
+
+    return res.status(200).json({
+      success: true,
+      msg: "User updated successfully",
+      user: {
+        id: updatedUser.id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        role: updatedUser.role,
+        isAdmin: updatedUser.isAdmin,
+        isVerified: updatedUser.isVerified,
+      },
+    });
+  } catch (error) {
+    console.error("Error updating user:", error);
+    return res.status(500).json({
+      success: false,
+      msg: `Error updating user: ${error.message || "Unknown error"}`,
+    });
+  }
+});
 
 module.exports = router;

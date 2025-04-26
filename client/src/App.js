@@ -26,7 +26,8 @@ import Orders from "./pages/Orders";
 import MyAccount from "./pages/MyAccount";
 import VerifyAccount from "./pages/VerifyAccount";
 import ForgotPassword from "./pages/forgotPassword";
-
+import { AuthProvider } from "./contexts/AuthContext";
+import ChatBox from "./components/ChatBox";
 
 const MyContext = createContext();
 
@@ -91,18 +92,22 @@ function App() {
   }, []);
 
   const getMyListData = () => {
-    fetchDataFromApi(`/api/my-list?userId=${user?.userId}`).then((res) => {
-      if (res?.length !== 0) {
-        setMyListData(res);
-      }
-    });
+    if (user?.userId) {
+      fetchDataFromApi(`/api/my-list?userId=${user?.userId}`).then((res) => {
+        if (res?.length !== 0) {
+          setMyListData(res);
+        }
+      });
+    }
   };
 
   const getCartData = () => {
     const user = JSON.parse(localStorage.getItem("user"));
-    fetchDataFromApi(`/api/cart?userId=${user?.userId}`).then((res) => {
-      setCartItems(res);
-    });
+    if (user?.userId) {
+      fetchDataFromApi(`/api/cart?userId=${user?.userId}`).then((res) => {
+        setCartItems(res);
+      });
+    }
   };
 
   const addToCart = async (items) => {
@@ -153,7 +158,10 @@ function App() {
 
   const signOut = () => {
     localStorage.removeItem("isLogin");
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     setIsLogin(false);
+    setUser(null);
   };
 
   const openFilters = () => {
@@ -232,60 +240,59 @@ function App() {
   };
 
   return (
-    <BrowserRouter>
+    <div className="App">
       <MyContext.Provider value={value}>
-        <Snackbar
-          open={alertBox.open}
-          autoHideDuration={6000}
-          onClose={handleClose}
-        >
-          <Alert
-            onClose={handleClose}
-            autoHideDuration={6000}
-            severity={alertBox.error === false ? "success" : "error"}
-            variant="filled"
-            sx={{ width: "100%" }}
-          >
-            {alertBox.msg}
-          </Alert>
-        </Snackbar>
-
-        {isLoading === true && (
-          <div className="loader">
-            <img src={Loader} />
-          </div>
-        )}
-
-        {categories?.categoryList?.length !== 0 && <Header />}
-
-        <Routes>
-          <Route exact={true} path="/" element={<Home />} />
-          <Route
-            exact={true}
-            path="/products/category/:id"
-            element={<Listing single={true} />}
-          />
-          <Route
-            exact={true}
-            path="/products/subCat/:id"
-            element={<Listing single={false} />}
-          />
-          <Route exact={true} path="/product/:id" element={<DetailsPage />} />
-          <Route exact={true} path="/cart" element={<Cart />} />
-          <Route exact={true} path="/signIn" element={<SignIn />} />
-          <Route exact={true} path="/signUp" element={<SignUp />} />
-          <Route exact={true} path="/myList" element={<MyList />} />
-          <Route exact={true} path="/checkout" element={<Checkout />} />
-          <Route exact={true} path="/search" element={<SearchPage />} />
-          <Route exact={true} path="/orders" element={<Orders />} />
-          <Route exact={true} path="/my-account" element={<MyAccount />} />
-          <Route exact={true} path="/verifyAccount" element={<VerifyAccount />} />
-          <Route exact={true} path="/forgotPassword" element={<ForgotPassword />} />
-          <Route exact={true} path="*" element={<NotFound />} />
-        </Routes>
-        <Footer />
+        <AuthProvider>
+          <BrowserRouter>
+            <Header />
+            <Snackbar
+              anchorOrigin={{
+                vertical: "top",
+                horizontal: "right",
+              }}
+              open={alertBox.open}
+              autoHideDuration={6000}
+              onClose={handleClose}
+            >
+              <Alert
+                onClose={handleClose}
+                severity={alertBox.error ? "error" : "success"}
+                sx={{ width: "100%" }}
+              >
+                {alertBox.msg}
+              </Alert>
+            </Snackbar>
+            <Routes>
+              <Route exact={true} path="/" element={<Home />} />
+              <Route
+                exact={true}
+                path="/products/category/:id"
+                element={<Listing single={true} />}
+              />
+              <Route
+                exact={true}
+                path="/products/subCat/:id"
+                element={<Listing single={false} />}
+              />
+              <Route exact={true} path="/product/:id" element={<DetailsPage />} />
+              <Route exact={true} path="/cart" element={<Cart />} />
+              <Route exact={true} path="/signIn" element={<SignIn />} />
+              <Route exact={true} path="/signUp" element={<SignUp />} />
+              <Route exact={true} path="/myList" element={<MyList />} />
+              <Route exact={true} path="/checkout" element={<Checkout />} />
+              <Route exact={true} path="/search" element={<SearchPage />} />
+              <Route exact={true} path="/orders" element={<Orders />} />
+              <Route exact={true} path="/my-account" element={<MyAccount />} />
+              <Route exact={true} path="/verifyAccount" element={<VerifyAccount />} />
+              <Route exact={true} path="/forgotPassword" element={<ForgotPassword />} />
+              <Route exact={true} path="*" element={<NotFound />} />
+            </Routes>
+            <Footer />
+            <ChatBox />
+          </BrowserRouter>
+        </AuthProvider>
       </MyContext.Provider>
-    </BrowserRouter>
+    </div>
   );
 }
 

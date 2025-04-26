@@ -44,6 +44,11 @@ import AddHomeBottomBanner from "./pages/HomeBottomBanners/addHomeBottomBanner";
 import EditHomeBottomBanner from "./pages/HomeBottomBanners/editHomeBottomBanner";
 import MyAccount from "./pages/MyAccount";
 import VerifyAccount from "./pages/OtpVerify";
+import UserList from "./pages/UserManagement/UserList";
+import AddUser from "./pages/UserManagement/AddUser";
+import EditUser from "./pages/UserManagement/EditUser";
+import StockManagement from "./pages/StockManagement";
+import Reports from "./pages/Reports";
 
 
 
@@ -348,6 +353,17 @@ function App() {
               />
               <Route exact={true} path="/my-account" element={<MyAccount />} />
               <Route exact={true} path="/verify-account" element={<VerifyAccount />} />
+              
+              {/* User Management Routes */}
+              <Route path="/users" exact={true} element={<UserList />} />
+              <Route path="/users/add" exact={true} element={<AddUser />} />
+              <Route path="/users/edit/:id" exact={true} element={<EditUser />} />
+              
+              {/* Stock Management Route - Accessible to staff and admin */}
+              <Route path="/stock-management" exact={true} element={<StockManagement />} />
+              
+              {/* Reports Route - Accessible to admin only */}
+              <Route path="/reports" exact={true} element={<Reports />} />
             </Routes>
           </div>
         </div>

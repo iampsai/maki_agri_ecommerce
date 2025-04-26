@@ -1,4 +1,5 @@
 const { Orders } = require('../models/orders');
+const { Product } = require('../models/products'); // Import Product model
 const express = require('express');
 const router = express.Router();
 
@@ -221,68 +222,77 @@ router.get(`/get/count`, async (req, res) =>{
 
 
 router.post('/create', async (req, res) => {
-
-    let order = new Orders({
-        name: req.body.name,
-        phoneNumber: req.body.phoneNumber,
-        address: req.body.address,
-        pincode: req.body.pincode,
-        amount: req.body.amount,
-        paymentId: req.body.paymentId,
-        email: req.body.email,
-        userid: req.body.userid,
-        products: req.body.products,
-        date:req.body.date
-    });
-
-    let order1 = {
-        name: req.body.name,
-        phoneNumber: req.body.phoneNumber,
-        address: req.body.address,
-        pincode: req.body.pincode,
-        amount: req.body.amount,
-        paymentId: req.body.paymentId,
-        email: req.body.email,
-        userid: req.body.userid,
-        products: req.body.products,
-        date:req.body.date
-    };
-
-    console.log(order1)
-
-
-
-    if (!order) {
-        res.status(500).json({
-            error: err,
-            success: false
-        })
+    const session = await Product.startSession();
+    session.startTransaction();
+    try {
+        // Validate stock for each product
+        for (const item of req.body.products) {
+            const product = await Product.findById(item.productId).session(session);
+            if (!product) {
+                throw new Error('Product not found: ' + item.productId);
+            }
+            if (product.countInStock < item.quantity) {
+                throw new Error('Insufficient stock for product: ' + product.name);
+            }
+        }
+        // Deduct stock for each product
+        for (const item of req.body.products) {
+            const product = await Product.findById(item.productId).session(session);
+            product.countInStock -= item.quantity;
+            await product.save({ session });
+        }
+        // Create the order
+        let order = new Orders({
+            name: req.body.name,
+            phoneNumber: req.body.phoneNumber,
+            address: req.body.address,
+            pincode: req.body.pincode,
+            amount: req.body.amount,
+            paymentId: req.body.paymentId,
+            email: req.body.email,
+            userid: req.body.userid,
+            products: req.body.products,
+            date: req.body.date
+        });
+        order = await order.save({ session });
+        await session.commitTransaction();
+        session.endSession();
+        res.status(201).json(order);
+    } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+        res.status(400).json({ success: false, message: error.message });
     }
-
-
-    order = await order.save();
-
-
-    res.status(201).json(order);
-
 });
 
 
 router.delete('/:id', async (req, res) => {
-
-    const deletedOrder = await Orders.findByIdAndDelete(req.params.id);
-
-    if (!deletedOrder) {
-        res.status(404).json({
-            message: 'Order not found!',
-            success: false
-        })
+    const session = await Product.startSession();
+    session.startTransaction();
+    try {
+        const order = await Orders.findById(req.params.id).session(session);
+        if (!order) {
+            await session.abortTransaction();
+            session.endSession();
+            return res.status(404).json({ message: 'Order not found!', success: false });
+        }
+        // Restore stock for each product in the order
+        for (const item of order.products) {
+            const product = await Product.findById(item.productId).session(session);
+            if (product) {
+                product.countInStock += item.quantity;
+                await product.save({ session });
+            }
+        }
+        await Orders.findByIdAndDelete(req.params.id).session(session);
+        await session.commitTransaction();
+        session.endSession();
+        res.status(200).json({ success: true, message: 'Order Deleted and stock restored!' });
+    } catch (error) {
+        await session.abortTransaction();
+        session.endSession();
+        res.status(500).json({ success: false, message: error.message });
     }
-
-    res.status(200).json({
-        success: true,
-        message: 'Order Deleted!'
-    })
 });
 
 

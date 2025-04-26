@@ -13,10 +13,10 @@ const bannersSchema = mongoose.Schema({
   catName: {
     type: String,
   },
-  subCatId:{
+  subCatId: {
     type: String,
   },
-  subCatName:{
+  subCatName: {
     type: String,
   }
 });

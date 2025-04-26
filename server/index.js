@@ -30,6 +30,8 @@ const searchRoutes = require('./routes/search.js');
 const bannersSchema = require('./routes/banners.js');
 const homeSideBannerSchema = require('./routes/homeSideBanner.js');
 const homeBottomBannerSchema = require('./routes/homeBottomBanner.js');
+const chatRoutes = require('./routes/chat.js');
+const reportsRoutes = require('./routes/reports.js');
 
 app.use("/api/user", userRoutes);
 app.use("/uploads", express.static("uploads"));
@@ -48,7 +50,8 @@ app.use(`/api/search`, searchRoutes);
 app.use(`/api/banners`, bannersSchema);
 app.use(`/api/homeSideBanners`, homeSideBannerSchema);
 app.use(`/api/homeBottomBanners`, homeBottomBannerSchema);
-
+app.use(`/api/chat`, chatRoutes);
+app.use(`/api/reports`, reportsRoutes);
 
 
 //Database

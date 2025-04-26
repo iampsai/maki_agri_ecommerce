@@ -3,7 +3,7 @@ import SliderBanner from "./slider/index";
 import CatSlider from "../../components/catSlider";
 
 import Banners from "../../components/banners";
-import {Link} from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import "./style.css";
 import Product from "../../components/product";
 import homeBannerPlaceholder from "../../assets/images/homeBannerPlaceholder.jpg";
@@ -26,11 +26,11 @@ const Home = (props) => {
   const [featuredProducts, setFeaturedProducts] = useState([]);
   const [homeSlides, setHomeSlides] = useState([]);
 
-  const  [homeSideBanners, setHomeSideBanners] = useState([]);
+  const [homeSideBanners, setHomeSideBanners] = useState([]);
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [slideList, setSlideList] = useState([]);
 
-  const productRow=useRef();
+  const productRow = useRef();
 
   const handleChange = (event, newValue) => {
     setValue(newValue);
@@ -78,7 +78,7 @@ const Home = (props) => {
 
     context.setEnableFilterTab(false);
 
-  }, []);
+  }, [context]);
 
 
 
@@ -105,29 +105,29 @@ const Home = (props) => {
 
   const filterProducts = (id) => {
     setIsLoading(true);
-      const location = localStorage.getItem("location");
-      fetchDataFromApi(
-        `/api/products/catId?catId=${id}&location=${location}`
-      ).then((res) => {
-        setFilterData(res.products);
-        setIsLoading(false);
-        // console.log(selectedCat)
-      });
+    const location = localStorage.getItem("location");
+    fetchDataFromApi(
+      `/api/products/catId?catId=${id}&location=${location}`
+    ).then((res) => {
+      setFilterData(res.products);
+      setIsLoading(false);
+      // console.log(selectedCat)
+    });
   };
 
   return (
     <div style={{ display: "block" }}>
 
-    {homeSlides?.length !== 0 ? (
-      <SliderBanner data={homeSlides} />
-    ) : (
-      <div className="container-fluid mt-3">
-        <div className="homeBannerSection w-100 pt-4 pb-4">
-          <img src={homeBannerPlaceholder} className="w-100" />
+      {homeSlides?.length !== 0 ? (
+        <SliderBanner data={homeSlides} />
+      ) : (
+        <div className="container-fluid mt-3">
+          <div className="homeBannerSection w-100 pt-4 pb-4">
+            <img src={homeBannerPlaceholder} className="w-100" alt="" />
+          </div>
         </div>
-      </div>
-    )}
-     
+      )}
+
 
       {context.categories?.categoryList?.length > 0 && (
         <CatSlider data={context.categories?.categoryList} />
@@ -160,58 +160,50 @@ const Home = (props) => {
             </div>
           </div>
 
-          <div className={`productRow pb-0 pt-2 ${isLoadingProducts===true && 'loading'}`} ref={productRow}>
+          <div className={`productRow pb-0 pt-2 ${isLoadingProducts === true && 'loading'}`} ref={productRow}>
             {filterData?.length !== 0 &&
               filterData?.filter((item, idx) => idx < 10)?.slice(0)
-              ?.reverse()
-              ?.map((item, index) => {
-                return (
-                  <div className="item" key={index}>
-                    <Product item={item} />
-                  </div>
-                );
-              })}
+                ?.reverse()
+                ?.map((item, index) => {
+                  return (
+                    <div className="item" key={index}>
+                      <Product item={item} />
+                    </div>
+                  );
+                })}
           </div>
         </div>
       </section>
 
-       {slideList?.length !== 0 && <Banners data={slideList}/>}
+      {slideList?.length !== 0 && <Banners data={slideList} />}
 
-      
-
-
-  
       <section className='homeProducts homeProductsRow2 pt-0'>
-      <div className='container-fluid'>
+        <div className='container-fluid'>
           <div className='d-flex align-items-center'>
-              <h2 className='hd mb-0 mt-0'>Featured Products</h2>
-
+            <h2 className='hd mb-0 mt-0'>Featured Products</h2>
           </div>
 
-     
           <div className='row mt-3'>
-              <div className='col-md-9'>
-                  <Slider {...settings} className='prodSlider'>
+            <div className='col-md-9'>
+              <Slider {...settings} className='prodSlider'>
+                {
+                  featuredProducts?.length !== 0 && featuredProducts?.slice(0)
+                    ?.reverse()
+                    ?.map((item, index) => {
+                      return (
+                        <div className="item" key={index}>
+                          <Product item={item} />
+                        </div>
+                      );
+                    })
+                }
+              </Slider>
+            </div>
 
-                      {
-                        featuredProducts?.length!==0 && featuredProducts?.slice(0)
-                        ?.reverse()
-                        ?.map((item,index)=>{
-                          return (
-                            <div className="item" key={index}>
-                              <Product item={item} />
-                            </div>
-                          );
-                        })
-                      }
-
-                  </Slider>
-              </div>
-
-              <div className='col-md-3 pr-5 res-hide'>
+            <div className='col-md-3 pr-5 res-hide'>
               {homeSideBanners?.length !== 0 &&
                 homeSideBanners?.map((item, index) => {
-                  if(index===1){
+                  if (index === 1) {
                     return (
                       <div className="banner mb-3" key={index}>
                         {item?.subCatId !== null ? (
@@ -240,19 +232,20 @@ const Home = (props) => {
                       </div>
                     );
                   }
-                
-                })}
-              </div>
+                  return null;
+                })
+              }
+            </div>
 
 
           </div>
 
 
-      </div>
-  </section>
+        </div>
+      </section>
 
 
-  
+
     </div>
   );
 };

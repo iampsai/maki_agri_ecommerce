@@ -15,11 +15,16 @@ import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
 import { BiSolidCategory } from "react-icons/bi";
 import { TbSlideshow } from "react-icons/tb";
+import { FaUsersCog } from "react-icons/fa";
+import { MdInventory } from "react-icons/md";
+import { FaChartBar } from "react-icons/fa";
 
 const Sidebar = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [isToggleSubmenu, setIsToggleSubmenu] = useState(false);
   const [isLogin, setIsLogin] = useState(false);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [userRole, setUserRole] = useState("");
 
   const context = useContext(MyContext);
 
@@ -42,7 +47,39 @@ const Sidebar = () => {
     } else {
       history("/login");
     }
+    
+    // Check for user data and role
+    checkUserRole();
   }, []);
+  
+  // Add a separate function to check user role that can be called when context changes
+  const checkUserRole = () => {
+    try {
+      const userData = JSON.parse(localStorage.getItem("user"));
+      if (userData) {
+        // Store the role for debugging
+        const role = userData.role || (userData.isAdmin ? 'admin' : 'user');
+        setUserRole(role);
+        
+        // Strict check for admin role only
+        const isUserAdmin = role === 'admin' || userData.isAdmin === true;
+        setIsAdmin(isUserAdmin);
+        console.log("User role:", role, "isAdmin:", isUserAdmin);
+      } else {
+        setIsAdmin(false);
+        setUserRole("");
+      }
+    } catch (error) {
+      console.error("Error parsing user data:", error);
+      setIsAdmin(false);
+      setUserRole("");
+    }
+  };
+  
+  // Re-check user role when context.user changes
+  useEffect(() => {
+    checkUserRole();
+  }, [context.user]);
 
   const logout = () => {
     localStorage.clear();
@@ -77,53 +114,6 @@ const Sidebar = () => {
                 Dashboard
               </Button>
             </NavLink>
-          </li>
-
-          <li>
-            <Button
-              className={`w-100 ${
-                activeTab === 1 && isToggleSubmenu === true ? "active" : ""
-              }`}
-              onClick={() => isOpenSubmenu(1)}
-            >
-              <span className="icon">
-                <TbSlideshow />
-              </span>
-              Home Banner Slides
-              <span className="arrow">
-                <FaAngleRight />
-              </span>
-            </Button>
-            <div
-              className={`submenuWrapper ${
-                activeTab === 1 && isToggleSubmenu === true
-                  ? "colapse"
-                  : "colapsed"
-              }`}
-            >
-              <ul className="submenu">
-                <li>
-                  <NavLink
-                    exact
-                    activeClassName="is-active"
-                    to="/homeBannerSlide/add"
-                    onClick={() => context.setIsOpenNav(false)}
-                  >
-                    Add Home Banner Slide
-                  </NavLink>
-                </li>
-                <li>
-                  <NavLink
-                    exact
-                    activeClassName="is-active"
-                    to="/homeBannerSlide/list"
-                    onClick={() => context.setIsOpenNav(false)}
-                  >
-                    Home Slides List
-                  </NavLink>
-                </li>
-              </ul>
-            </div>
           </li>
 
           <li>
@@ -266,13 +256,106 @@ const Sidebar = () => {
                 }}
               >
                 <span className="icon">
-                  {" "}
-                  <FaClipboardCheck fontSize="small" />
+                  <FaCartArrowDown />
                 </span>
                 Orders
               </Button>
             </NavLink>
           </li>
+
+          {/* Stock Management - Visible to both staff and admin */}
+          {(userRole === 'staff' || userRole === 'admin') && (
+            <li>
+              <NavLink exact activeClassName="is-active" to="/stock-management">
+                <Button
+                  className={`w-100 ${
+                    activeTab === 9 && isToggleSubmenu === true ? "active" : ""
+                  }`}
+                  onClick={() => {
+                    isOpenSubmenu(9);
+                    context.setIsOpenNav(false);
+                  }}
+                >
+                  <span className="icon">
+                    <MdInventory />
+                  </span>
+                  Stock Management
+                </Button>
+              </NavLink>
+            </li>
+          )}
+
+          {/* Reports - Only visible to admin users */}
+          {(userRole === 'admin' || userRole === 'staff') && (
+            <li>
+              <NavLink exact activeClassName="is-active" to="/reports">
+                <Button
+                  className={`w-100 ${
+                    activeTab === 10 && isToggleSubmenu === true ? "active" : ""
+                  }`}
+                  onClick={() => {
+                    isOpenSubmenu(10);
+                    context.setIsOpenNav(false);
+                  }}
+                >
+                  <span className="icon">
+                    <FaChartBar />
+                  </span>
+                  Reports
+                </Button>
+              </NavLink>
+            </li>
+          )}
+          
+          {/* User Management - Only visible to admin users */}
+          {isAdmin && userRole === 'admin' && (
+            <li>
+              <Button
+                className={`w-100 ${
+                  activeTab === 8 && isToggleSubmenu === true ? "active" : ""
+                }`}
+                onClick={() => isOpenSubmenu(8)}
+              >
+                <span className="icon">
+                  <FaUsersCog />
+                </span>
+                User Management
+                <span className="arrow">
+                  <FaAngleRight />
+                </span>
+              </Button>
+              <div
+                className={`submenuWrapper ${
+                  activeTab === 8 && isToggleSubmenu === true
+                    ? "colapse"
+                    : "colapsed"
+                }`}
+              >
+                <ul className="submenu">
+                  <li>
+                    <NavLink
+                      exact
+                      activeClassName="is-active"
+                      to="/users"
+                      onClick={() => context.setIsOpenNav(false)}
+                    >
+                      User List
+                    </NavLink>
+                  </li>
+                  <li>
+                    <NavLink
+                      exact
+                      activeClassName="is-active"
+                      to="/users/add"
+                      onClick={() => context.setIsOpenNav(false)}
+                    >
+                      Add User
+                    </NavLink>
+                  </li>
+                </ul>
+              </div>
+            </li>
+          )}
 
           <li>
             <Button
@@ -316,6 +399,53 @@ const Sidebar = () => {
                     onClick={() => context.setIsOpenNav(false)}
                   >
                     Banner Upload
+                  </NavLink>
+                </li>
+              </ul>
+            </div>
+          </li>
+
+          <li>
+            <Button
+              className={`w-100 ${
+                activeTab === 1 && isToggleSubmenu === true ? "active" : ""
+              }`}
+              onClick={() => isOpenSubmenu(1)}
+            >
+              <span className="icon">
+                <TbSlideshow />
+              </span>
+              Home Banner Slides
+              <span className="arrow">
+                <FaAngleRight />
+              </span>
+            </Button>
+            <div
+              className={`submenuWrapper ${
+                activeTab === 1 && isToggleSubmenu === true
+                  ? "colapse"
+                  : "colapsed"
+              }`}
+            >
+              <ul className="submenu">
+                <li>
+                  <NavLink
+                    exact
+                    activeClassName="is-active"
+                    to="/homeBannerSlide/add"
+                    onClick={() => context.setIsOpenNav(false)}
+                  >
+                    Add Home Banner Slide
+                  </NavLink>
+                </li>
+                <li>
+                  <NavLink
+                    exact
+                    activeClassName="is-active"
+                    to="/homeBannerSlide/list"
+                    onClick={() => context.setIsOpenNav(false)}
+                  >
+                    Home Slides List
                   </NavLink>
                 </li>
               </ul>
