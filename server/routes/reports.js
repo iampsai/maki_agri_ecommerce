@@ -148,7 +148,7 @@ router.get('/customers', jwtMiddleware, verifyAdminRole, async (req, res) => {
             if (!order.userid) return;
             
             const userId = order.userid;
-            const userInfo = userMap[userId] || { name: order.name, email: order.email || 'unknown@email.com' };
+            const userInfo = userMap[userId] || { name: order.name || 'Unknown', email: order.email || 'unknown@email.com' };
             
             if (!customerOrders[userId]) {
                 customerOrders[userId] = {
