@@ -139,8 +139,6 @@ function App() {
           //console.log(item.country)
         });
 
-
-       
         setCountryList(countryListArr);
 
         //console.log(res.data.data[0].country)
@@ -354,7 +352,7 @@ function App() {
               <Route exact={true} path="/my-account" element={<MyAccount />} />
               <Route exact={true} path="/verify-account" element={<VerifyAccount />} />
               
-              {/* User Management Routes */}
+              {/* User Management Routes - Accessible to admin only */}
               <Route path="/users" exact={true} element={<UserList />} />
               <Route path="/users/add" exact={true} element={<AddUser />} />
               <Route path="/users/edit/:id" exact={true} element={<EditUser />} />
