@@ -146,25 +146,26 @@ const DetailsPage = (props) => {
   const selectedItem = () => {};
 
   const addtoCart = () => {
-    if (activeSize !== null) {
-      setTabError(false);
-
-      const user = JSON.parse(localStorage.getItem("user"));
-
-      cartFields.productTitle = currentProduct?.name;
-      cartFields.image = currentProduct?.images[0];
-      cartFields.rating = currentProduct?.rating;
-      cartFields.price = currentProduct?.price;
-      cartFields.quantity = productQuantity;
-      cartFields.subTotal = parseInt(currentProduct?.price * productQuantity);
-      cartFields.productId = currentProduct?.id;
-      cartFields.countInStock = currentProduct?.countInStock;
-      cartFields.userId = user?.userId;
-
-      context.addToCart(cartFields);
-    } else {
+    // Only check size if the product has size options
+    if (currentProduct?.size && currentProduct.size.length > 0 && activeSize === null) {
       setTabError(true);
+      return;
     }
+
+    setTabError(false);
+    const user = JSON.parse(localStorage.getItem("user"));
+
+    cartFields.productTitle = currentProduct?.name;
+    cartFields.image = currentProduct?.images[0];
+    cartFields.rating = currentProduct?.rating;
+    cartFields.price = currentProduct?.price;
+    cartFields.quantity = productQuantity;
+    cartFields.subTotal = parseInt(currentProduct?.price * productQuantity);
+    cartFields.productId = currentProduct?.id;
+    cartFields.countInStock = currentProduct?.countInStock;
+    cartFields.userId = user?.userId;
+
+    context.addToCart(cartFields);
   };
 
   const getAllReviews = (productId) => {

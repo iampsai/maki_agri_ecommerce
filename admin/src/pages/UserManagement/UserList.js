@@ -202,7 +202,7 @@ const UserList = () => {
               </Breadcrumbs>
 
               <Link to="/users/add">
-                <Button className="btn-blue  ml-3 pl-3 pr-3">Add Product</Button>
+                <Button className="btn-blue  ml-3 pl-3 pr-3">Add User</Button>
               </Link>
             </div>
           </div>
@@ -286,7 +286,7 @@ const UserList = () => {
                                         variant="outlined"
                                         color="primary"
                                         size="small"
-                                        className="me-2"
+                                        className="mr-2"
                                       >
                                         <FaEdit />
                                       </Button>
@@ -345,7 +345,7 @@ const UserList = () => {
             </DialogContentText>
           </DialogContent>
           <DialogActions>
-            <Button onClick={handleDeleteCancel} color="primary">
+            <Button onClick={handleDeleteCancel} color="primary" className="mr-2">
               Cancel
             </Button>
             <Button onClick={handleDeleteConfirm} color="error" autoFocus>

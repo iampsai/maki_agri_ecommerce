@@ -19,10 +19,10 @@ export const fetchDataFromApi = async (url) => {
             'Content-Type': 'application/json'
         };
         
-        const baseUrl = 'http://localhost:8080';
+        const baseUrl = process.env.REACT_APP_BASE_URL || 'http://localhost:8080';
         
         // For debugging purposes - show what URL is being called
-        console.log(`API Request to: ${baseUrl + url}`);
+        // console.log(`API Request to: ${baseUrl + url}`);
         
         // Make the request
         const { data } = await axios.get(baseUrl + url, { headers })

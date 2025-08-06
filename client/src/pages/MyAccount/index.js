@@ -83,6 +83,15 @@ const MyAccount = () => {
     images: [],
     isAdmin: false,
     password: "",
+    billingAddress: {
+      fullName: "",
+      country: "",
+      streetAddressLine1: "",
+      streetAddressLine2: "",
+      city: "",
+      state: "",
+      zipCode: ""
+    }
   });
 
   const [fields, setFields] = useState({
@@ -114,6 +123,16 @@ const MyAccount = () => {
         name: res.name,
         email: res.email,
         phone: res.phone,
+        billingAddress: res.billingAddress || {
+          fullName: "",
+          country: "",
+          streetAddressLine1: "",
+          streetAddressLine2: "",
+          city: "",
+          state: "",
+          zipCode: "",
+          phoneNumber: ""
+        }
       });
     });
 
@@ -121,10 +140,22 @@ const MyAccount = () => {
   }, []);
 
   const changeInput = (e) => {
-    setFormFields(() => ({
-      ...formFields,
-      [e.target.name]: e.target.value,
-    }));
+    const { name, value } = e.target;
+    if (name.startsWith('billingAddress.')) {
+      const field = name.split('.')[1];
+      setFormFields(prev => ({
+        ...prev,
+        billingAddress: {
+          ...prev.billingAddress,
+          [field]: value
+        }
+      }));
+    } else {
+      setFormFields(prev => ({
+        ...prev,
+        [name]: value,
+      }));
+    }
   };
 
   const changeInput2 = (e) => {
@@ -411,7 +442,107 @@ const MyAccount = () => {
                     </div>
                   </div>
 
-                  <div className="form-group">
+                  <h4 className="mt-4 mb-3">Billing Address</h4>
+                  <div className="row">
+                    <div className="col-md-6">
+                      <div className="form-group">
+                        <TextField
+                          label="Full Name"
+                          variant="outlined"
+                          className="w-100"
+                          name="billingAddress.fullName"
+                          onChange={changeInput}
+                          value={formFields.billingAddress.fullName}
+                        />
+                      </div>
+                    </div>
+                    <div className="col-md-6">
+                      <div className="form-group">
+                        <TextField
+                          label="Country"
+                          variant="outlined"
+                          className="w-100"
+                          name="billingAddress.country"
+                          onChange={changeInput}
+                          value={formFields.billingAddress.country}
+                        />
+                      </div>
+                    </div>
+                    <div className="col-md-12">
+                      <div className="form-group">
+                        <TextField
+                          label="Street Address Line 1"
+                          variant="outlined"
+                          className="w-100"
+                          name="billingAddress.streetAddressLine1"
+                          onChange={changeInput}
+                          value={formFields.billingAddress.streetAddressLine1}
+                        />
+                      </div>
+                    </div>
+                    <div className="col-md-12">
+                      <div className="form-group">
+                        <TextField
+                          label="Street Address Line 2"
+                          variant="outlined"
+                          className="w-100"
+                          name="billingAddress.streetAddressLine2"
+                          onChange={changeInput}
+                          value={formFields.billingAddress.streetAddressLine2}
+                        />
+                      </div>
+                    </div>
+                    <div className="col-md-4">
+                      <div className="form-group">
+                        <TextField
+                          label="City"
+                          variant="outlined"
+                          className="w-100"
+                          name="billingAddress.city"
+                          onChange={changeInput}
+                          value={formFields.billingAddress.city}
+                        />
+                      </div>
+                    </div>
+                    <div className="col-md-4">
+                      <div className="form-group">
+                        <TextField
+                          label="State"
+                          variant="outlined"
+                          className="w-100"
+                          name="billingAddress.state"
+                          onChange={changeInput}
+                          value={formFields.billingAddress.state}
+                        />
+                      </div>
+                    </div>
+                    <div className="col-md-4">
+                      <div className="form-group">
+                        <TextField
+                          label="ZIP Code"
+                          variant="outlined"
+                          className="w-100"
+                          name="billingAddress.zipCode"
+                          onChange={changeInput}
+                          value={formFields.billingAddress.zipCode}
+                        />
+                      </div>
+                    </div>
+                    <div className="col-md-12">
+                      <div className="form-group">
+                        <TextField
+                          label="Phone Number"
+                          variant="outlined"
+                          className="w-100"
+                          name="billingAddress.phoneNumber"
+                          onChange={changeInput}
+                          value={formFields.billingAddress.phoneNumber}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="form-group mt-4">
                     <Button
                       type="submit"
                       className="btn-g btn-lg btn-big"

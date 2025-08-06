@@ -28,7 +28,13 @@ const Checkout = () => {
     window.scrollTo(0, 0);
 
     const user = JSON.parse(localStorage.getItem("user"));
-    fetchDataFromApi(`/api/cart?userId=${user?.userId}`).then((res) => {
+    if (!user?.userId) {
+      history("/signIn");
+      return;
+    }
+    
+    // Load cart data
+    fetchDataFromApi(`/api/cart?userId=${user.userId}`).then((res) => {
       setCartData(res);
 
       setTotalAmount(
@@ -39,8 +45,43 @@ const Checkout = () => {
       );
     });
 
+    // Load user data including billing address
+    fetchDataFromApi(`/api/user/${user.userId}`).then((res) => {
+      if (res) {
+        // Set billing address if it exists
+        if (res.billingAddress) {
+          setFormFields({
+            fullName: res.billingAddress.fullName || res.name || '',
+            country: res.billingAddress.country || '',
+            streetAddressLine1: res.billingAddress.streetAddressLine1 || '',
+            streetAddressLine2: res.billingAddress.streetAddressLine2 || '',
+            city: res.billingAddress.city || '',
+            state: res.billingAddress.state || '',
+            zipCode: res.billingAddress.zipCode || '',
+            phoneNumber: res.billingAddress.phoneNumber || '',
+            email: res.email || ''
+          });
+        } else {
+          // If no billing address, at least fill in name, phone and email from user profile
+          setFormFields(prev => ({
+            ...prev,
+            fullName: res.name || '',
+            phoneNumber: res.phone || '',
+            email: res.email || ''
+          }));
+        }
+      }
+    }).catch(error => {
+      console.error('Error loading user data:', error);
+      context.setAlertBox({
+        open: true,
+        error: true,
+        msg: "Error loading billing information"
+      });
+    });
+
     context.setEnableFilterTab(false);
-  }, []);
+  }, [context, history]);
 
   const onChangeInput = (e) => {
     setFormFields(() => ({
@@ -349,6 +390,7 @@ const Checkout = () => {
                       className="w-100"
                       size="small"
                       name="fullName"
+                      value={formFields.fullName}
                       onChange={onChangeInput}
                     />
                   </div>
@@ -362,6 +404,7 @@ const Checkout = () => {
                       className="w-100"
                       size="small"
                       name="country"
+                      value={formFields.country}
                       onChange={onChangeInput}
                     />
                   </div>
@@ -379,6 +422,7 @@ const Checkout = () => {
                       className="w-100"
                       size="small"
                       name="streetAddressLine1"
+                      value={formFields.streetAddressLine1}
                       onChange={onChangeInput}
                     />
                   </div>
@@ -390,6 +434,7 @@ const Checkout = () => {
                       className="w-100"
                       size="small"
                       name="streetAddressLine2"
+                      value={formFields.streetAddressLine2}
                       onChange={onChangeInput}
                     />
                   </div>
@@ -407,6 +452,7 @@ const Checkout = () => {
                       className="w-100"
                       size="small"
                       name="city"
+                      value={formFields.city}
                       onChange={onChangeInput}
                     />
                   </div>
@@ -424,6 +470,7 @@ const Checkout = () => {
                       className="w-100"
                       size="small"
                       name="state"
+                      value={formFields.state}
                       onChange={onChangeInput}
                     />
                   </div>
@@ -441,6 +488,7 @@ const Checkout = () => {
                       className="w-100"
                       size="small"
                       name="zipCode"
+                      value={formFields.zipCode}
                       onChange={onChangeInput}
                     />
                   </div>
@@ -457,6 +505,7 @@ const Checkout = () => {
                       size="small"
                       type="number"
                       name="phoneNumber"
+                      value={formFields.phoneNumber}
                       onChange={onChangeInput}
                     />
                   </div>
@@ -471,6 +520,7 @@ const Checkout = () => {
                       className="w-100"
                       size="small"
                       name="email"
+                      value={formFields.email}
                       onChange={onChangeInput}
                     />
                   </div>

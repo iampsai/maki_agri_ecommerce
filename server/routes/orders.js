@@ -1,5 +1,6 @@
 const { Orders } = require('../models/orders');
 const { Product } = require('../models/products'); // Import Product model
+const { sendOrderStatusNotification } = require('../utils/smsService');
 const express = require('express');
 const router = express.Router();
 
@@ -297,35 +298,58 @@ router.delete('/:id', async (req, res) => {
 
 
 router.put('/:id', async (req, res) => {
+    try {
+        const order = await Orders.findByIdAndUpdate(
+            req.params.id,
+            {
+                name: req.body.name,
+                phoneNumber: req.body.phoneNumber,
+                address: req.body.address,
+                pincode: req.body.pincode,
+                amount: req.body.amount,
+                paymentId: req.body.paymentId,
+                email: req.body.email,
+                userid: req.body.userid,
+                products: req.body.products,
+                status: req.body.status
+            },
+            { new: true }
+        );
 
-    const order = await Orders.findByIdAndUpdate(
-        req.params.id,
-        {
-            name: req.body.name,
-            phoneNumber: req.body.phoneNumber,
-            address: req.body.address,
-            pincode: req.body.pincode,
-            amount: req.body.amount,
-            paymentId: req.body.paymentId,
-            email: req.body.email,
-            userid: req.body.userid,
-            products: req.body.products,
-            status:req.body.status
-        },
-        { new: true }
-    )
+        if (!order) {
+            return res.status(500).json({
+                message: 'Order cannot be updated!',
+                success: false
+            });
+        }
 
+        // Send SMS notification for confirmed and delivered status
+        if (req.body.status && ['confirmed', 'delivered'].includes(req.body.status.toLowerCase())) {
+            try {
+                await sendOrderStatusNotification(
+                    order.phoneNumber,
+                    order._id,
+                    req.body.status.toLowerCase()
+                );
+            } catch (smsError) {
+                console.error('Failed to send SMS notification:', smsError);
+                // Don't fail the order update if SMS fails
+            }
+        }
 
-
-    if (!order) {
-        return res.status(500).json({
-            message: 'Order cannot be updated!',
-            success: false
-        })
+        res.status(200).json({
+            success: true,
+            message: 'Order status updated to ' + req.body.status,
+            order: order
+        });
+    } catch (error) {
+        console.error('Error updating order:', error);
+        res.status(500).json({
+            success: false,
+            message: 'Failed to update order',
+            error: error.message
+        });
     }
-
-    res.send(order);
-
 })
 
 

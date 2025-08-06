@@ -1,6 +1,7 @@
 const { User } = require("../models/user");
 const { ImageUpload } = require("../models/imageUpload");
 const { sendEmail } = require("../utils/emailService");
+const { generateOTP, sendOTPVerification } = require("../utils/smsService");
 
 const express = require("express");
 const router = express.Router();
@@ -70,61 +71,53 @@ router.post(`/signup`, async (req, res) => {
 
   try {
     // Generate verification code
-    const verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const verifyCode = generateOTP();
     let user;
 
-    // If the user exists but is not verified, update the existing user
-
+    // Check if user already exists
     const existingUser = await User.findOne({ email: email });
     const existingUserByPh = await User.findOne({ phone: phone });
 
     if (existingUser) {
-      res.json({
-        status: "FAILED",
-        msg: "User already exist with this email!",
+      return res.status(400).json({
+        success: false,
+        message: "User already exists with this email!",
       });
-      return;
     }
 
     if (existingUserByPh) {
-      res.json({
-        status: "FAILED",
-        msg: "User already exist with this phone number!",
+      return res.status(400).json({
+        success: false,
+        message: "User already exists with this phone number!",
       });
-      return;
     }
 
-    if (existingUser) {
-      const hashPassword = await bcrypt.hash(password, 10);
-      existingUser.password = hashPassword;
-      existingUser.otp = verifyCode;
-      existingUser.otpExpires = Date.now() + 600000; // 10 minutes
-      await existingUser.save();
-      user = existingUser;
-    } else {
-      // Create a new user
-      const hashPassword = await bcrypt.hash(password, 10);
-
-      user = new User({
-        name,
-        email,
-        phone,
-        password: hashPassword,
-        isAdmin,
-        otp: verifyCode,
-        otpExpires: Date.now() + 600000, // 10 minutes
-      });
-
-      await user.save();
-    }
-
-    // Send verification email
-    const resp = sendEmailFun(
+    // Create a new user
+    const hashPassword = await bcrypt.hash(password, 10);
+    user = new User({
+      name,
       email,
-      "Verify Email",
+      phone,
+      password: hashPassword,
+      isAdmin,
+      otp: verifyCode,
+      otpExpires: Date.now() + 600000, // 10 minutes
+    });
+
+    await user.save();
+
+    // Send verification via both email and SMS
+    const emailPromise = sendEmail(
+      email,
+      "Verify Your Account",
       "",
-      "Your OTP is " + verifyCode
+      `Your OTP for Rich Agri Supply account verification is: ${verifyCode}`
     );
+
+    const smsPromise = sendOTPVerification(phone, verifyCode);
+
+    // Wait for both notifications to be sent
+    await Promise.all([emailPromise, smsPromise]);
 
     // Create a JWT token for verification purposes
     const token = jwt.sign(
@@ -132,23 +125,18 @@ router.post(`/signup`, async (req, res) => {
       process.env.JSON_WEB_TOKEN_SECRET_KEY
     );
 
-    // res.cookie('token', token, {
-    //     httpOnly: false,
-    //     sameSite: "none",0
-    //     secure: true,
-    //     maxAge: 3600000,
-    // });
-
     // Send success response
     return res.status(200).json({
       success: true,
-      message: "User registered successfully! Please verify your email.",
-      token: token, // Optional: include this if needed for verification
+      message: "Registration successful! Please verify your account with the OTP sent to your phone and email.",
+      token: token,
     });
   } catch (error) {
-    console.log(error);
-    res.json({ status: "FAILED", msg: "something went wrong" });
-    return;
+    console.error('Registration error:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: "An error occurred during registration. Please try again." 
+    });
   }
 });
 
@@ -156,68 +144,118 @@ router.post(`/verifyAccount/resendOtp`, async (req, res) => {
   const { email } = req.body;
 
   try {
-    // Generate verification code
-    const verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // If the user exists but is not verified, update the existing user
-
     const existingUser = await User.findOne({ email: email });
 
-    if (existingUser) {
-      return res.status(200).json({
-        success: true,
-        message: "OTP SEND",
-        otp: verifyCode,
-        existingUserId: existingUser._id,
+    if (!existingUser) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found!",
       });
     }
+
+    // Generate new verification code
+    const verifyCode = generateOTP();
+
+    // Update user with new OTP
+    existingUser.otp = verifyCode;
+    existingUser.otpExpires = Date.now() + 600000; // 10 minutes
+    await existingUser.save();
+
+    // Send verification via both email and SMS
+    const emailPromise = sendEmail(
+      email,
+      "Verify Your Account",
+      "",
+      `Your new OTP for Rich Agri Supply account verification is: ${verifyCode}`
+    );
+
+    const smsPromise = sendOTPVerification(existingUser.phone, verifyCode);
+
+    // Wait for both notifications to be sent
+    await Promise.all([emailPromise, smsPromise]);
+
+    return res.status(200).json({
+      success: true,
+      message: "New OTP has been sent to your phone and email.",
+      existingUserId: existingUser._id,
+    });
   } catch (error) {
-    console.log(error);
-    res.json({ status: "FAILED", msg: "something went wrong" });
-    return;
+    console.error('Resend OTP error:', error);
+    return res.status(500).json({ 
+      success: false, 
+      message: "An error occurred while resending OTP. Please try again." 
+    });
   }
 });
 
-router.put(`/verifyAccount/emailVerify/:id`, async (req, res) => {
+router.put(`/verifyAccount/verify/:id`, async (req, res) => {
   const { email, otp } = req.body;
 
   try {
-    const existingUser = await User.findOne({ email: email });
+    const user = await User.findOne({ 
+      _id: req.params.id,
+      email: email
+    });
 
-    console.log(existingUser);
-
-    if (existingUser) {
-      const user = await User.findByIdAndUpdate(
-        req.params.id,
-        {
-          name: existingUser.name,
-          email: email,
-          phone: existingUser.phone,
-          password: existingUser.password,
-          images: existingUser.images,
-          isAdmin: existingUser.isAdmin,
-          isVerified: existingUser.isVerified,
-          otp: otp,
-          otpExpires: Date.now() + 600000,
-        },
-        { new: true }
-      );
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found."
+      });
     }
 
-    // Send verification email
-    const resp = sendEmailFun(email, "Verify Email", "", "Your OTP is " + otp);
+    // Check if OTP has expired
+    if (user.otpExpires < Date.now()) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP has expired. Please request a new one."
+      });
+    }
 
-    // Create a JWT token for verification purposes
+    // Verify OTP
+    if (user.otp !== otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP. Please try again."
+      });
+    }
+
+    // Update user verification status
+    const updatedUser = await User.findByIdAndUpdate(
+      req.params.id,
+      {
+        isVerified: true,
+        otp: null,
+        otpExpires: null
+      },
+      { new: true }
+    );
+
+    if (!updatedUser) {
+      return res.status(500).json({
+        success: false,
+        message: "Failed to update user verification status."
+      });
+    }
+
+    // Create a JWT token for the verified user
     const token = jwt.sign(
-      { email: existingUser.email, id: existingUser._id },
+      { email: updatedUser.email, id: updatedUser._id },
       process.env.JSON_WEB_TOKEN_SECRET_KEY
     );
 
     // Send success response
     return res.status(200).json({
       success: true,
-      message: "OTP SEND",
-      token: token, // Optional: include this if needed for verification
+      message: "Account verified successfully! You can now log in.",
+      token: token,
+      user: {
+        id: updatedUser._id,
+        name: updatedUser.name,
+        email: updatedUser.email,
+        phone: updatedUser.phone,
+        isVerified: updatedUser.isVerified
+      }
     });
   } catch (error) {
     console.log(error);
