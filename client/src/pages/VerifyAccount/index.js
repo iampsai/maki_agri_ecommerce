@@ -1,6 +1,5 @@
 import React, { useContext, useEffect } from "react";
 import { Link } from 'react-router-dom';
-import Box from "@mui/material/Box";
 import { Button } from "@mui/material";
 import { useState } from "react";
 import { useNavigate } from 'react-router-dom';
@@ -9,7 +8,7 @@ import Backdrop from "@mui/material/Backdrop";
 import CircularProgress from "@mui/material/CircularProgress";
 
 import { MyContext } from '../../App';
-import { postData, resendOtp as resendOtpApi } from "../../utils/api";
+import { postData } from "../../utils/api";
 
 import OtpBox from "../../components/OtpBox"
 
@@ -44,56 +43,99 @@ const VerifyAccount = () => {
     setOtp(value);
   };
 
-  const verifyOtp = (e) => {
+  const verifyOtp = async (e) => {
     e.preventDefault();
     setIsLoading(true);
   
-    const obj = {
-      otp: otp,
-      email: localStorage.getItem("userEmail"),
-    };
+    try {
+      // Validate OTP
+      if (!otp || otp.length !== 6) {
+        throw new Error("Please enter the 6-digit OTP sent to your email and phone.");
+      }
 
-    if (otp !== "") {
+      // Get required data from localStorage
+      const userId = localStorage.getItem('userId');
+      const email = localStorage.getItem("userEmail");
       const actionType = localStorage.getItem('actionType');
-      postData(`/api/user/verifyemail`, obj).then((res) => {
-        console.log(res);
-        if (res?.success === true) {
-          context.setAlertBox({
-            open: true,
-            error: false,
-            msg: res?.message,
-          });
-          setIsLoading(false);
-          if (actionType !== "forgotPassword") {
-            localStorage.removeItem("userEmail");
-            history("/signIn");
-          } 
-          if (actionType === "forgotPassword") {
-            history("/forgotPassword");
-          }
-          
-        } else {
-          context.setAlertBox({
-            open: true,
-            error: true,
-            msg: res?.message,
-          });
-          setIsLoading(false);
-        }
+
+      // Validate required data
+      if (!userId || !email) {
+        console.error('Missing data:', { userId, email });
+        throw new Error("Registration information not found. Please try signing up again.");
+      }
+
+      console.log('Sending verification request:', {
+        userId,
+        email,
+        otp: otp.toString()
       });
+
+      // Make verification request
+      const res = await postData(`/api/user/verifyAccount/verify/${userId}`, {
+        otp: otp.toString(), // Ensure OTP is sent as string
+        email: email
+      });
+
+      if (res?.success) {
+        context.setAlertBox({
+          open: true,
+          error: false,
+          msg: res.message,
+        });
+
+        // Clean up localStorage
+        localStorage.removeItem("userEmail");
+        localStorage.removeItem("userId");
+        
+        // Keep token if it's a password reset flow
+        if (actionType !== "forgotPassword") {
+          localStorage.removeItem("token");
+          setTimeout(() => {
+            history("/signIn");
+          }, 2000);
+        } else {
+          history("/forgotPassword");
+        }
+      } else {
+        throw new Error(res?.message || "Failed to verify OTP");
+      }
+    } catch (error) {
+      console.error("OTP verification error:", error);
+      context.setAlertBox({
+        open: true,
+        error: true,
+        msg: error.message || "Failed to verify OTP. Please try again.",
+      });
+    } finally {
+      setIsLoading(false);
     }
-    
   };
 
   const handleResendOtp = async () => {
     try {
-      const data = await resendOtpApi(`/api/user/resendotp`);
+      const email = localStorage.getItem("userEmail");
+      if (!email) {
+        context.setAlertBox({
+          open: true,
+          error: true,
+          msg: "Email not found. Please try signing up again.",
+        });
+        return;
+      }
+
+      const data = await postData(`/api/user/verifyAccount/resendOtp`, { email });
 
       if (data?.success) {
+        // Reset the resend OTP timer
+        setResendOtpEnabled(false);
+        setTimeout(() => {
+          setResendOtpEnabled(true);
+        }, 60000); // 60 seconds
+
         context.setAlertBox({
           open: true,
           error: false,
-          msg: "OTP resent successfully!",
+          msg: data.message || "OTP has been resent to your email and phone.",
         });
       } else {
         context.setAlertBox({

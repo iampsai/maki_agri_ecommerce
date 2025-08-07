@@ -213,15 +213,16 @@ const SignIn = () => {
       setIsLoading(true);
       const result = await forgotPassword(formFields.email);
       
-      if (result.status === "SUCCESS") {
+      if (result.success) {
         localStorage.setItem("userEmail", formFields.email);
+        localStorage.setItem("userId", result.userId);
         localStorage.setItem("actionType", 'forgotPassword');
         history("/verifyAccount");
       } else {
         context.setAlertBox({
           open: true,
           error: true,
-          msg: result.msg,
+          msg: result.message || "Failed to process forgot password request",
         });
       }
       setIsLoading(false);

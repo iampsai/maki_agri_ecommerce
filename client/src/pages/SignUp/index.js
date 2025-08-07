@@ -28,7 +28,7 @@ const SignUp = () => {
 
   const context = useContext(MyContext);
   const history = useNavigate();
-  const { signup, googleSignIn, facebookSignIn } = useAuth();
+  const { googleSignIn, facebookSignIn } = useAuth();
 
   useEffect(() => {
     context.setEnableFilterTab(false);
@@ -83,16 +83,30 @@ const SignUp = () => {
 
       setIsLoading(true);
 
-      // Register with Firebase and sync with backend
-      const result = await signup(formFields.name, formFields.email, formFields.password);
+      // Format phone number for Philippines format if needed
+      let formattedPhone = formFields.phone;
+      if (formattedPhone.startsWith('0')) {
+        formattedPhone = formattedPhone.replace('0', '63');
+      }
 
-      if (result && result.status !== 'FAILED') {
+      // Register with backend first to get OTP
+      const backendResult = await postData("/api/user/signup", {
+        name: formFields.name,
+        email: formFields.email,
+        phone: formattedPhone,
+        password: formFields.password
+      });
+
+      if (backendResult.success) {
+        // Save user details for verification
         localStorage.setItem("userEmail", formFields.email);
+        localStorage.setItem("userId", backendResult.userId);
+        localStorage.setItem("token", backendResult.token);
         
         context.setAlertBox({
           open: true,
           error: false,
-          msg: "Account created successfully! Please verify your email.",
+          msg: backendResult.message || "Account created! Please verify with the OTP sent to your email and phone.",
         });
 
         setTimeout(() => {
@@ -103,7 +117,7 @@ const SignUp = () => {
         context.setAlertBox({
           open: true,
           error: true,
-          msg: result?.msg || "Failed to create account",
+          msg: backendResult.message || "Failed to create account",
         });
       }
     } catch (error) {
@@ -122,26 +136,42 @@ const SignUp = () => {
       const result = await googleSignIn();
       
       if (!result.error) {
-        context.setIsLogin(true);
-        context.setUser(result.user);
-        
-        context.setAlertBox({
-          open: true,
-          error: false,
-          msg: result.msg || "User Login Successfully!",
+        // After successful Google sign in, register or login with backend
+        const backendResult = await postData("/api/user/authWithGoogle", {
+          name: result.user.displayName,
+          email: result.user.email,
+          // If you need to collect phone number for Google users, you'll need to add an extra step
+          phone: "",  // You might want to prompt user for phone number
+          images: result.user.photoURL ? [result.user.photoURL] : [],
         });
 
-        setTimeout(() => {
-          history("/");
-          setIsLoading(false);
-        }, 2000);
+        if (backendResult.success || backendResult.user) {
+          context.setIsLogin(true);
+          context.setUser(backendResult.user);
+          
+          context.setAlertBox({
+            open: true,
+            error: false,
+            msg: backendResult.msg || "Signed in with Google successfully!",
+          });
+
+          // Set auth token from backend
+          if (backendResult.token) {
+            localStorage.setItem('token', backendResult.token);
+          }
+
+          setTimeout(() => {
+            history("/");
+          }, 2000);
+        } else {
+          throw new Error(backendResult.message || "Failed to register with backend");
+        }
       } else {
         context.setAlertBox({
           open: true,
           error: true,
-          msg: result.msg,
+          msg: result.msg || "Google sign in failed",
         });
-        setIsLoading(false);
       }
     } catch (error) {
       context.setAlertBox({

@@ -324,7 +324,7 @@ router.put('/:id', async (req, res) => {
         }
 
         // Send SMS notification for confirmed and delivered status
-        if (req.body.status && ['confirmed', 'delivered'].includes(req.body.status.toLowerCase())) {
+        if (req.body.status && ['confirm', 'delivered'].includes(req.body.status.toLowerCase())) {
             try {
                 await sendOrderStatusNotification(
                     order.phoneNumber,

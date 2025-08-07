@@ -123,6 +123,8 @@ const Listing = (props) => {
 
   }
 
+  // console.log('productData', productData);
+
   return (
     <>
 

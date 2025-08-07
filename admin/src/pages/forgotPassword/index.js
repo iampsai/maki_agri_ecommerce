@@ -55,7 +55,7 @@ const ForgotPassword = () => {
     }
   };
 
-  const requestPasswordReset = (e) => {
+  const requestPasswordReset = async (e) => {
     e.preventDefault();
 
     if (formfields.email === "") {
@@ -68,37 +68,37 @@ const ForgotPassword = () => {
     }
 
     setIsLoading(true);
-    postData("/api/user/forgotPassword", { email: formfields.email }).then((res) => {
-      try {
-        if (res.status === "SUCCESS") {
-          localStorage.setItem("userEmail", formfields.email);
-          context.setAlertBox({
-            open: true,
-            error: false,
-            msg: "OTP has been sent to your email",
-          });
-          setStep(2);
-        } else {
-          context.setAlertBox({
-            open: true,
-            error: true,
-            msg: res.msg || "Something went wrong",
-          });
-        }
-        setIsLoading(false);
-      } catch (error) {
-        console.log(error);
+    try {
+      const res = await postData("/api/user/forgotPassword", { email: formfields.email });
+      if (res.success) {
+        localStorage.setItem("userEmail", formfields.email);
+        localStorage.setItem("userId", res.userId);
+        context.setAlertBox({
+          open: true,
+          error: false,
+          msg: res.message || "OTP has been sent to your email and phone",
+        });
+        setStep(2);
+      } else {
         context.setAlertBox({
           open: true,
           error: true,
-          msg: "Something went wrong",
+          msg: res.message || "Failed to send OTP",
         });
-        setIsLoading(false);
       }
-    });
+    } catch (error) {
+      console.error("Password reset error:", error);
+      context.setAlertBox({
+        open: true,
+        error: true,
+        msg: "An error occurred while processing your request",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const verifyOtp = (e) => {
+  const verifyOtp = async (e) => {
     e.preventDefault();
 
     if (formfields.otp === "" || formfields.otp.length !== 6) {
@@ -111,38 +111,22 @@ const ForgotPassword = () => {
     }
 
     setIsLoading(true);
-    const obj = {
-      otp: formfields.otp,
-      email: formfields.email || localStorage.getItem("userEmail"),
-    };
-
-    postData(`/api/user/verifyemail`, obj).then((res) => {
-      try {
-        if (res?.success === true) {
-          context.setAlertBox({
-            open: true,
-            error: false,
-            msg: res?.message || "OTP verified successfully",
-          });
-          setStep(3);
-        } else {
-          context.setAlertBox({
-            open: true,
-            error: true,
-            msg: res?.message || "Invalid OTP",
-          });
-        }
-        setIsLoading(false);
-      } catch (error) {
-        console.log(error);
-        context.setAlertBox({
-          open: true,
-          error: true,
-          msg: "Something went wrong",
-        });
-        setIsLoading(false);
-      }
-    });
+    try {
+      const email = formfields.email || localStorage.getItem("userEmail");
+      
+      // In forgot password flow, we directly move to password reset after OTP verification
+      setStep(3);
+      
+    } catch (error) {
+      console.error("OTP verification error:", error);
+      context.setAlertBox({
+        open: true,
+        error: true,
+        msg: error.response?.data?.message || "Failed to verify OTP",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const resetPassword = (e) => {
@@ -178,12 +162,13 @@ const ForgotPassword = () => {
     setIsLoading(true);
     const payload = {
       email: formfields.email || localStorage.getItem("userEmail"),
-      newPass: formfields.newPass,
+      otp: formfields.otp,
+      newPassword: formfields.newPass,
     };
 
     postData(`/api/user/forgotPassword/changePassword`, payload).then((res) => {
       try {
-        if (res.status === "SUCCESS") {
+        if (res.success && res.status === "SUCCESS") {
           context.setAlertBox({
             open: true,
             error: false,
@@ -197,16 +182,16 @@ const ForgotPassword = () => {
           context.setAlertBox({
             open: true,
             error: true,
-            msg: res.msg || "Failed to change password",
+            msg: res.message || "Failed to change password",
           });
         }
         setIsLoading(false);
       } catch (error) {
-        console.log(error);
+        console.error('Password change error:', error);
         context.setAlertBox({
           open: true,
           error: true,
-          msg: "Something went wrong",
+          msg: "Something went wrong. Please try again.",
         });
         setIsLoading(false);
       }

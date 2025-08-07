@@ -124,8 +124,8 @@ async function sendSMS(to, message) {
 async function sendSMSWithFallback(to, message, primaryProvider = 'iprog', fallbackProvider = 'twilio') {
     // Format phone number
     let formattedPhone = to;
-    if (!to.startsWith('+') && primaryProvider === 'iprog') {
-        formattedPhone = '+' + to;
+    if (to.startsWith('+') && primaryProvider === 'iprog') {
+        formattedPhone = to.replace(/^\+/, ''); 
     }
 
     // Try primary provider
@@ -166,7 +166,7 @@ async function sendSMSWithFallback(to, message, primaryProvider = 'iprog', fallb
 async function sendOrderStatusNotification(phone, orderNumber, status) {
     let message;
     switch (status.toLowerCase()) {
-        case 'confirmed':
+        case 'confirm':
             message = `Your order #${orderNumber} has been confirmed! We're preparing your items for delivery. Thank you for shopping with Rich Agri Supply!`;
             break;
         case 'delivered':

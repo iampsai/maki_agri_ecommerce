@@ -302,11 +302,7 @@ const Orders = () => {
                             <TableCell style={{ minWidth: columns.minWidth }}>
                               <Select
                                 disabled={isLoading === true ? true : false}
-                                value={
-                                  order?.status !== null
-                                    ? order?.status
-                                    : statusVal
-                                }
+                                value={ order?.status !== null ? order?.status : statusVal }
                                 onChange={(e) =>
                                   handleChangeStatus(e, order?._id)
                                 }

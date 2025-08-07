@@ -28,8 +28,9 @@ const ForgotPassword = () => {
 
   const [formfields, setFormfields] = useState({
     email: localStorage.getItem("userEmail"),
-    newPass: "",
-    confirmPass: "",
+    otp: "",
+    newPassword: "",
+    confirmPassword: "",
   });
 
   const onchangeInput = (e) => {
@@ -39,49 +40,83 @@ const ForgotPassword = () => {
     }));
   };
 
-  const changePass = (e) => {
+  const changePass = async (e) => {
     e.preventDefault();
+    setIsLoading(true);
 
-    if (formfields.newPass === "") {
+    if (!formfields.otp) {
+      context.setAlertBox({
+        open: true,
+        error: true,
+        msg: "Please enter the OTP received via email and SMS",
+      });
+      setIsLoading(false);
+      return;
+    }
+
+    if (!formfields.newPassword) {
       context.setAlertBox({
         open: true,
         error: true,
         msg: "Please enter new password",
       });
-      return false;
+      setIsLoading(false);
+      return;
     }
 
-    if (formfields.confirmPass === "") {
+    if (!formfields.confirmPassword) {
       context.setAlertBox({
         open: true,
         error: true,
         msg: "Please confirm password",
       });
-      return false;
+      setIsLoading(false);
+      return;
     }
 
-    if (formfields.newPass !== formfields.confirmPass) {
+    if (formfields.newPassword !== formfields.confirmPassword) {
       context.setAlertBox({
         open: true,
         error: true,
-        msg: "Password and confirm password not match",
+        msg: "Password and confirm password do not match",
       });
-      return false;
+      setIsLoading(false);
+      return;
     }
 
-    postData(`/api/user/forgotPassword/changePassword`, formfields).then(
-      (res) => {
-        if (res.status === "SUCCESS") {
-          context.setAlertBox({
-            open: true,
-            error: false,
-            msg: res.message,
-          });
-          localStorage.removeItem("actionType")
-          history("/signIn");
-        }
+    try {
+      const response = await postData(`/api/user/forgotPassword/changePassword`, {
+        email: formfields.email,
+        otp: formfields.otp,
+        newPassword: formfields.newPassword
+      });
+
+      if (response.success && response.status === "SUCCESS") {
+        context.setAlertBox({
+          open: true,
+          error: false,
+          msg: response.message,
+        });
+        localStorage.removeItem("actionType");
+        localStorage.removeItem("userEmail");
+        localStorage.removeItem("userId");
+        history("/signIn");
+      } else {
+        context.setAlertBox({
+          open: true,
+          error: true,
+          msg: response.message || "Failed to change password",
+        });
       }
-    );
+    } catch (error) {
+      context.setAlertBox({
+        open: true,
+        error: true,
+        msg: "An error occurred while changing password",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -110,6 +145,20 @@ const ForgotPassword = () => {
 
             <h3>Forgot Password</h3>
             <form className="mt-4" onSubmit={changePass}>
+              <div className="form-group mb-4 w-100">
+                <TextField
+                  id="otp-input"
+                  label="Enter OTP"
+                  type="text"
+                  required
+                  className="w-100"
+                  name="otp"
+                  onChange={onchangeInput}
+                  disabled={isLoading}
+                  placeholder="Enter the OTP received via email and SMS"
+                />
+              </div>
+
               <div className="form-group mb-4 w-100 position-relative">
                 <TextField
                   id="standard-basic"
@@ -117,9 +166,9 @@ const ForgotPassword = () => {
                   type={showPassword === false ? "password" : "text"}
                   required
                   className="w-100"
-                  name="newPass"
+                  name="newPassword"
                   onChange={onchangeInput}
-                  disabled={isLoading === true ? true : false}
+                  disabled={isLoading}
                 />
                 <Button
                   className="icon"
@@ -140,9 +189,9 @@ const ForgotPassword = () => {
                   type={showPassword2 === false ? "password" : "text"}
                   required
                   className="w-100"
-                  name="confirmPass"
+                  name="confirmPassword"
                   onChange={onchangeInput}
-                  disabled={isLoading === true ? true : false}
+                  disabled={isLoading}
                 />
                 <Button
                   className="icon"

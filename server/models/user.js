@@ -21,6 +21,29 @@ const userSchema = mongoose.Schema({
             required:true
         }
     ],
+    role:{
+        type: String,
+        enum: ['admin', 'staff', 'user'],
+        default: 'user',
+    },
+    isAdmin:{
+        type: Boolean,
+        default: false,
+    },
+    isVerified:{
+        type:Boolean,
+        default:false
+    },
+    otp:{
+        type:String
+    },
+    otpExpires:{
+        type:Date
+    },
+    date: {
+        type: Date,
+        default: Date.now
+    },
     billingAddress:{
         fullName: {
             type: String,
@@ -49,34 +72,7 @@ const userSchema = mongoose.Schema({
         zipCode: {
             type: String,
             default: ''
-        },
-        phoneNumber: {
-            type: String,
-            default: ''
-        },
-    },
-    role:{
-        type: String,
-        enum: ['admin', 'staff', 'user'],
-        default: 'user',
-    },
-    isAdmin:{
-        type: Boolean,
-        default: false,
-    },
-    isVerified:{
-        type:Boolean,
-        default:false
-    },
-    otp:{
-        type:String
-    },
-    otpExpires:{
-        type:Date
-    },
-    date: {
-        type: Date,
-        default: Date.now
+        }
     },
 },{timeStamps:true})
 

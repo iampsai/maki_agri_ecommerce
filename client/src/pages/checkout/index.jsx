@@ -58,7 +58,7 @@ const Checkout = () => {
             city: res.billingAddress.city || '',
             state: res.billingAddress.state || '',
             zipCode: res.billingAddress.zipCode || '',
-            phoneNumber: res.billingAddress.phoneNumber || '',
+            phoneNumber: res.phone || '',
             email: res.email || ''
           });
         } else {

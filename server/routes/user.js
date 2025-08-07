@@ -130,6 +130,7 @@ router.post(`/signup`, async (req, res) => {
       success: true,
       message: "Registration successful! Please verify your account with the OTP sent to your phone and email.",
       token: token,
+      userId: user._id // Include the userId in the response
     });
   } catch (error) {
     console.error('Registration error:', error);
@@ -188,10 +189,31 @@ router.post(`/verifyAccount/resendOtp`, async (req, res) => {
   }
 });
 
-router.put(`/verifyAccount/verify/:id`, async (req, res) => {
+router.post(`/verifyAccount/verify/:id`, async (req, res) => {
+  console.log('Verification request received:', {
+    userId: req.params.id,
+    body: req.body
+  });
+
   const { email, otp } = req.body;
 
   try {
+    // Validate required fields
+    if (!email || !otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Email and OTP are required."
+      });
+    }
+
+    // Validate ID format
+    if (!req.params.id.match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid user ID format."
+      });
+    }
+
     const user = await User.findOne({ 
       _id: req.params.id,
       email: email
@@ -200,7 +222,7 @@ router.put(`/verifyAccount/verify/:id`, async (req, res) => {
     if (!user) {
       return res.status(404).json({
         success: false,
-        message: "User not found."
+        message: "User not found with the provided ID and email."
       });
     }
 
@@ -491,7 +513,7 @@ router.post(`/authWithGoogle`, async (req, res) => {
 });
 
 router.put("/:id", async (req, res) => {
-  const { name, phone, email } = req.body;
+  const { name, phone, email, images, billingAddress } = req.body;
 
   const userExist = await User.findById(req.params.id);
 
@@ -508,12 +530,21 @@ router.put("/:id", async (req, res) => {
       phone: phone,
       email: email,
       password: newPassword,
-      images: imagesArr,
+      images: images,
+      billingAddress: {
+        fullName: billingAddress?.fullName?.trim() || '',
+        country: billingAddress?.country?.trim() || '',
+        streetAddressLine1: billingAddress?.streetAddressLine1?.trim() || '',
+        streetAddressLine2: billingAddress?.streetAddressLine2?.trim() || '',
+        city: billingAddress?.city?.trim() || '',
+        state: billingAddress?.state?.trim() || '',
+        zipCode: billingAddress?.zipCode?.trim() || ''
+      }
     },
     { new: true }
   );
 
-  if (!user) return res.status(400).send("the user cannot be Updated!");
+  if (!user) return res.status(400).send("The user cannot be updated!");
 
   res.send(user);
 });
@@ -544,68 +575,150 @@ router.post(`/forgotPassword`, async (req, res) => {
   const { email } = req.body;
 
   try {
-    // Generate verification code
-    const verifyCode = Math.floor(100000 + Math.random() * 900000).toString();
+    // Generate verification code using our OTP generator
+    const verifyCode = generateOTP();
 
-    // If the user exists but is not verified, update the existing user
-
+    // Check if user exists
     const existingUser = await User.findOne({ email: email });
 
     if (!existingUser) {
-      res.json({ status: "FAILED", msg: "User not exist with this email!" });
-      return;
+      return res.status(404).json({ 
+        success: false, 
+        message: "No account found with this email address." 
+      });
     }
 
-    if (existingUser) {
-      existingUser.otp = verifyCode;
-      existingUser.otpExpires = Date.now() + 600000; // 10 minutes
-      await existingUser.save();
+    // Update user with new OTP
+    existingUser.otp = verifyCode;
+    existingUser.otpExpires = Date.now() + 600000; // 10 minutes
+    await existingUser.save();
+
+    // Format phone number for Philippines format if needed
+    let formattedPhone = existingUser.phone;
+    if (formattedPhone.startsWith('0')) {
+      formattedPhone = formattedPhone.replace('0', '63');
     }
 
-    // Send verification email
-    const resp = sendEmailFun(
+    // Send verification via both email and SMS
+    const emailPromise = sendEmail(
       email,
-      "Verify Email",
+      "Password Reset Request",
       "",
-      "Your OTP is " + verifyCode
+      `Your OTP for password reset is: ${verifyCode}. This code will expire in 10 minutes.`
     );
+
+    const smsPromise = sendOTPVerification(formattedPhone, verifyCode);
+
+    // Wait for both notifications to be sent
+    await Promise.all([emailPromise, smsPromise]);
 
     // Send success response
     return res.status(200).json({
       success: true,
-      status: "SUCCESS",
-      message: "OTP Send",
+      message: "Password reset OTP has been sent to your email and phone number.",
+      userId: existingUser._id
     });
   } catch (error) {
-    console.log(error);
-    res.json({ status: "FAILED", msg: "something went wrong" });
-    return;
+    console.error('Forgot password error:', error);
+    return res.status(500).json({ 
+      success: false,
+      message: "An error occurred while processing your request. Please try again." 
+    });
   }
 });
 
 router.post(`/forgotPassword/changePassword`, async (req, res) => {
-  const { email, newPass } = req.body;
+  const { email, otp, newPassword } = req.body;
 
   try {
-    const existingUser = await User.findOne({ email: email });
+    // Find user and verify OTP
+    const user = await User.findOne({ email: email });
 
-    if (existingUser) {
-      const hashPassword = await bcrypt.hash(newPass, 10);
-      existingUser.password = hashPassword;
-      await existingUser.save();
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        message: "User not found."
+      });
     }
+
+    // Verify OTP
+    if (user.otp !== otp) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid OTP. Please try again."
+      });
+    }
+
+    // Check if OTP has expired
+    if (user.otpExpires < Date.now()) {
+      return res.status(400).json({
+        success: false,
+        message: "OTP has expired. Please request a new one."
+      });
+    }
+
+    // Hash new password and update user
+    const hashPassword = await bcrypt.hash(newPassword, 10);
+    user.password = hashPassword;
+    user.otp = null;
+    user.otpExpires = null;
+    await user.save();
 
     // Send success response
     return res.status(200).json({
       success: true,
       status: "SUCCESS",
-      message: "Password change successfully",
+      message: "Password changed successfully",
     });
   } catch (error) {
-    console.log(error);
-    res.json({ status: "FAILED", msg: "something went wrong" });
-    return;
+    console.error('Change password error:', error);
+    return res.status(500).json({
+      success: false,
+      status: "FAILED",
+      message: "Something went wrong. Please try again."
+    });
   }
+});
+
+// Billing Address Routes
+router.post('/billing-address/:id', async (req, res) => {
+    try {
+        const user = await User.findByIdAndUpdate(
+            req.params.id,
+            {
+                billingAddress: {
+                    fullName: req.body.fullName,
+                    country: req.body.country,
+                    streetAddressLine1: req.body.streetAddressLine1,
+                    streetAddressLine2: req.body.streetAddressLine2,
+                    city: req.body.city,
+                    state: req.body.state,
+                    zipCode: req.body.zipCode,
+                }
+            },
+            { new: true }
+        );
+
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+
+        res.status(200).json(user);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
+});
+
+router.get('/billing-address/:id', async (req, res) => {
+    try {
+        const user = await User.findById(req.params.id);
+        if (!user) {
+            return res.status(404).json({ message: 'User not found' });
+        }
+        res.status(200).json(user.billingAddress);
+    } catch (error) {
+        res.status(500).json({ message: error.message });
+    }
 });
 
 // Admin-specific user management routes - Add middleware to verify admin role

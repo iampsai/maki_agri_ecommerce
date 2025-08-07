@@ -214,6 +214,8 @@ const DetailsPage = (props) => {
     }
   };
 
+  // console.log('currentProduct', currentProduct);
+
   return (
     <>
       <section className="detailsPage mb-5">
@@ -321,6 +323,16 @@ const DetailsPage = (props) => {
                 </div>
               </div>
 
+              <p className="text-light mb-4">
+                {currentProduct?.countInStock === 0 ? (
+                  <span className="text-danger">Out of Stock</span>
+                ) : (
+                  <span className="text-success">
+                    {currentProduct?.countInStock} items in stock
+                  </span>
+                )}
+              </p>
+
               <p>{currentProduct?.description}</p>
 
               {currentProduct?.size?.length !== 0 && (
@@ -356,7 +368,7 @@ const DetailsPage = (props) => {
                     {currentProduct?.productRam?.map((productRam, index) => {
                       return (
                         <li className="list-inline-item">
-                          <a
+                          <a 
                             className={`tag ${
                               activeSize === index ? "active" : ""
                             }`}
@@ -408,6 +420,7 @@ const DetailsPage = (props) => {
                     <Button
                       className={`btn-g btn-lg addtocartbtn`}
                       onClick={addtoCart}
+                      disabled={currentProduct?.countInStock === 0}
                     >
                       <ShoppingCartOutlinedIcon />
                       {context.isAddingInCart === true
