@@ -51,6 +51,7 @@ import EditUser from "./pages/UserManagement/EditUser";
 import StockManagement from "./pages/StockManagement";
 import Reports from "./pages/Reports";
 import ChatMessages from "./pages/ChatMessages";
+import NotificationsPage from "./pages/Notifications";
 
 
 
@@ -368,6 +369,7 @@ function App() {
 
               {/* Chat Route */}
               <Route path="/chat" exact={true} element={<ChatMessages />} />
+              <Route path="/notifications" exact={true} element={<NotificationsPage />} />
             </Routes>
           </div>
         </div>
