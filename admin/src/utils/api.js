@@ -1,14 +1,6 @@
 import axios from "axios";
 
-const token=localStorage.getItem("token");
-
-const params={
-    headers: {
-        'Authorization': `Bearer ${token}`, // API key in the Authorization header
-        'Content-Type': 'application/json', // Adjust the content type as needed
-      },
-
-} 
+// api helpers used by admin pages
 
 export const fetchDataFromApi = async (url) => {
     try {
@@ -19,10 +11,10 @@ export const fetchDataFromApi = async (url) => {
             'Content-Type': 'application/json'
         };
         
-        const baseUrl = process.env.REACT_APP_BASE_URL || 'http://localhost:8080';
+    const baseUrl = process.env.REACT_APP_BASE_URL || 'http://localhost:8080';
         
-        // For debugging purposes - show what URL is being called
-        // console.log(`API Request to: ${baseUrl + url}`);
+    // For debugging purposes - show what URL is being called
+    console.log(`API Request to: ${baseUrl + url}`);
         
         // Make the request
         const { data } = await axios.get(baseUrl + url, { headers })
@@ -40,9 +32,10 @@ export const fetchDataFromApi = async (url) => {
             };
         }
         
-        return data;
+    console.log(`API Response for ${url}:`, data && (typeof data === 'object' ? JSON.stringify(data).slice(0,200) : data));
+    return data;
     } catch (error) {
-        console.error(`API Error for ${url}:`, error);
+    console.error(`API Error for ${url}:`, error.response?.data || error.message || error);
         
         // For reports endpoints, always return mock data structure on error
         if (url.includes('/api/reports/')) {
@@ -52,13 +45,14 @@ export const fetchDataFromApi = async (url) => {
             };
         }
         
-        return error.response?.data || []; // Return error data if available or empty array
+    return error.response?.data || [];
     }
 }
 
 
 export const uploadImage = async (url, formData) => {
-    const { res } = await axios.post(process.env.REACT_APP_BASE_URL + url , formData)
+    const baseUrl = process.env.REACT_APP_BASE_URL || 'http://localhost:8080';
+    const { res } = await axios.post(baseUrl + url , formData)
     return res;
 }
 
@@ -67,7 +61,8 @@ export const postData = async (url, formData) => {
         // Always get the latest token
         const currentToken = localStorage.getItem("token");
         
-        const response = await fetch(process.env.REACT_APP_BASE_URL + url, {
+    const baseUrl = process.env.REACT_APP_BASE_URL || 'http://localhost:8080';
+    const response = await fetch(baseUrl + url, {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${currentToken}`,
@@ -98,7 +93,8 @@ export const editData = async (url, updatedData) => {
         // Always get the latest token
         const currentToken = localStorage.getItem("token");
         
-        const response = await axios.put(`${process.env.REACT_APP_BASE_URL}${url}`, updatedData, {
+    const baseUrl = process.env.REACT_APP_BASE_URL || 'http://localhost:8080';
+    const response = await axios.put(`${baseUrl}${url}`, updatedData, {
             headers: {
                 'Authorization': `Bearer ${currentToken}`,
                 'Content-Type': 'application/json',
@@ -123,7 +119,8 @@ export const deleteData = async (url) => {
             'Content-Type': 'application/json'
         };
         
-        const response = await axios.delete(`${process.env.REACT_APP_BASE_URL}${url}`, { headers });
+    const baseUrl = process.env.REACT_APP_BASE_URL || 'http://localhost:8080';
+    const response = await axios.delete(`${baseUrl}${url}`, { headers });
         return response.data;
     } catch (error) {
         console.error('Error in deleteData:', error.response?.data || error.message);
@@ -144,7 +141,8 @@ export const deleteImages = async (url, image) => {
             'Content-Type': 'application/json'
         };
         
-        const response = await axios.delete(`${process.env.REACT_APP_BASE_URL}${url}`, {
+    const baseUrl = process.env.REACT_APP_BASE_URL || 'http://localhost:4000';
+    const response = await axios.delete(`${baseUrl}${url}`, {
             headers,
             data: image
         });

@@ -75,7 +75,7 @@ const SubCategory = () => {
 
   const deleteSubCat = (id) => {
     const userInfo = JSON.parse(localStorage.getItem("user"));
-    if (userInfo?.email === "rinkuv37@gmail.com") {
+  if (userInfo?.isAdmin === true) {
     context.setProgress(30);
     deleteData(`/api/category/${id}`).then((res) => {
       context.setProgress(100);

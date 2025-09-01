@@ -28,6 +28,8 @@ import VerifyAccount from "./pages/VerifyAccount";
 import ForgotPassword from "./pages/forgotPassword";
 import { AuthProvider } from "./contexts/AuthContext";
 import ChatBox from "./components/ChatBox";
+import Rider from "./pages/Rider";
+import RiderDashboard from "./pages/Rider/Dashboard";
 
 const MyContext = createContext();
 
@@ -153,7 +155,9 @@ function App() {
 
   const signIn = () => {
     const is_Login = localStorage.getItem("isLogin");
-    setIsLogin(is_Login);
+    // setIsLogin(is_Login);
+    // Coerce stored value to boolean (localStorage stores strings)
+    setIsLogin(is_Login === "true" || is_Login === true);
   };
 
   const signOut = () => {
@@ -199,10 +203,8 @@ function App() {
   }, []);
 
   const value = {
-    isLogin,
     windowWidth,
     categories,
-    isOpenFilters,
     addToCart,
     signOut,
     signIn,
@@ -238,6 +240,8 @@ function App() {
     closeSearch,
     isOpenSearch,
   };
+
+  console.log("isLogin", isLogin);
 
   return (
     <div className="App">
@@ -285,10 +289,12 @@ function App() {
               <Route exact={true} path="/my-account" element={<MyAccount />} />
               <Route exact={true} path="/verifyAccount" element={<VerifyAccount />} />
               <Route exact={true} path="/forgotPassword" element={<ForgotPassword />} />
+              <Route exact={true} path="/rider" element={<Rider />} />
+              <Route exact={true} path="/rider/dashboard" element={<RiderDashboard />} />
               <Route exact={true} path="*" element={<NotFound />} />
             </Routes>
             <Footer />
-            <ChatBox />
+            {isLogin && <ChatBox />}
           </BrowserRouter>
         </AuthProvider>
       </MyContext.Provider>

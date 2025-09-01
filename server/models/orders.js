@@ -57,7 +57,26 @@ const ordersSchema = mongoose.Schema({
     ],
     status:{
         type:String,
-        default:"pending"
+        default:"pending",
+        // possible values: pending, cancelled, in-transit, completed
+        enum: ['pending', 'cancelled', 'in-transit', 'completed']
+    },
+    // Delivery rider assigned to the order
+    deliveryRider: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User',
+        default: null
+    },
+    // A short token embedded in the QR code to authorize rider actions
+    riderToken: {
+        type: String,
+        default: null,
+        unique: false
+    },
+    // Optional pre-generated QR (data URL) for quick access
+    qr: {
+        type: String,
+        default: null
     },
     date: {
         type: Date,

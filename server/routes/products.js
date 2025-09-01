@@ -12,6 +12,34 @@ const mongoose = require("mongoose");
 
 const cloudinary = require("cloudinary").v2;
 
+const authJwt = require("../helper/jwt");
+const jwtMiddleware = authJwt();
+const { User } = require("../models/user");
+
+// Middleware to ensure only admins can perform certain actions
+const verifyAdminRole = async (req, res, next) => {
+  try {
+    if (!req.auth) {
+      return res.status(401).json({ success: false, message: "Authentication required" });
+    }
+
+    const user = await User.findById(req.auth.id);
+    if (!user) {
+      return res.status(401).json({ success: false, message: "User not found" });
+    }
+
+    if (!user.isAdmin) {
+      return res.status(403).json({ success: false, message: "Admin access required" });
+    }
+
+    req.user = user;
+    return next();
+  } catch (error) {
+    console.error("Admin verification error in products route:", error);
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 cloudinary.config({
   cloud_name: process.env.cloudinary_Config_Cloud_Name,
   api_key: process.env.cloudinary_Config_api_key,
@@ -203,7 +231,7 @@ router.get(`/catId`, async (req, res) => {
       }
     }
 
-    if (req.query.location !== "All" && req.query.location!==undefined) {
+    if (req.query.location !== "All" && req.query.location !== undefined) {
       return res.status(200).json({
         products: productList,
         totalPages: totalPages,
@@ -218,7 +246,7 @@ router.get(`/catId`, async (req, res) => {
     }
 
 
-   
+
 
   }
 });
@@ -468,6 +496,8 @@ router.post(`/recentlyViewd`, async (req, res) => {
 });
 
 router.post(`/create`, async (req, res) => {
+  console.log('DEBUG [products.create] req.body keys:', Object.keys(req.body));
+  console.log('DEBUG [products.create] expiryDate raw:', req.body.expiryDate);
   const category = await Category.findById(req.body.category);
   if (!category) {
     return res.status(404).send("invalid Category!");
@@ -490,6 +520,8 @@ router.post(`/create`, async (req, res) => {
     brand: req.body.brand,
     price: req.body.price,
     oldPrice: req.body.oldPrice,
+    variantPrices: req.body.variantPrices || [],
+    expiryDate: req.body.expiryDate ? new Date(req.body.expiryDate) : null,
     catId: req.body.catId,
     catName: req.body.catName,
     subCat: req.body.subCat,
@@ -545,7 +577,7 @@ router.delete("/deleteImage", async (req, res) => {
 
   const response = await cloudinary.uploader.destroy(
     imageName,
-    (error, result) => {}
+    (error, result) => { }
   );
 
   if (response) {
@@ -553,7 +585,7 @@ router.delete("/deleteImage", async (req, res) => {
   }
 });
 
-router.delete("/:id", async (req, res) => {
+router.delete("/:id", jwtMiddleware, verifyAdminRole, async (req, res) => {
   const product = await Product.findById(req.params.id);
   const images = product.images;
 
@@ -601,6 +633,9 @@ router.delete("/:id", async (req, res) => {
 });
 
 router.put("/:id", async (req, res) => {
+  console.log('DEBUG [products.update] req.params.id:', req.params.id);
+  console.log('DEBUG [products.update] req.body keys:', Object.keys(req.body));
+  console.log('DEBUG [products.update] expiryDate raw:', req.body.expiryDate);
   const product = await Product.findByIdAndUpdate(
     req.params.id,
     {
@@ -624,6 +659,8 @@ router.put("/:id", async (req, res) => {
       productRam: req.body.productRam,
       size: req.body.size,
       productWeight: req.body.productWeight,
+      variantPrices: req.body.variantPrices || [],
+      expiryDate: req.body.expiryDate ? new Date(req.body.expiryDate) : null,
       location: req.body.location,
     },
     { new: true }

@@ -53,13 +53,36 @@ export function AuthProvider({ children }) {
   // Login with email and password
   const login = async (email, password) => {
     setError('');
+    // Try backend authentication first (supports admin-created users that may not exist in Firebase)
+    try {
+      const res = await postData('/api/user/signin', { email, password });
+      if (!res.error && res.token) {
+        const user = {
+          userName: res?.user?.name,
+          email: res?.user?.email,
+          userId: res.user?.id,
+          image: res?.user?.images?.length > 0 ? res?.user?.images[0] : "",
+          isAdmin: res.user?.isAdmin,
+          role: res.user?.role || res.user?.role?.toString?.()
+        };
+
+        localStorage.setItem('token', res.token);
+        localStorage.setItem('user', JSON.stringify(user));
+
+        return { error: false, user: user, msg: 'User Login Successfully!' };
+      }
+      // If backend returned an error, fall back to Firebase sign-in below
+    } catch (err) {
+      // ignore and try firebase fallback
+      console.warn('Backend signin failed, attempting Firebase signin as fallback', err?.message || err);
+    }
+
+    // Fallback: try Firebase auth (for users created via client-side Firebase flows)
     const result = await loginWithEmailAndPassword(email, password);
-    
     if (!result.error) {
       try {
-        // Sync with your backend
-        const res = await postData("/api/user/signin", { email, password });
-        
+        // Sync with your backend after successful Firebase sign-in
+        const res = await postData('/api/user/signin', { email, password });
         if (!res.error) {
           const user = {
             userName: res?.user?.name,
@@ -67,19 +90,20 @@ export function AuthProvider({ children }) {
             userId: res.user?.id,
             image: res?.user?.images?.length > 0 ? res?.user?.images[0] : "",
             isAdmin: res.user?.isAdmin,
+            role: res.user?.role || res.user?.role?.toString?.()
           };
-          
-          localStorage.setItem("token", res?.token);
-          localStorage.setItem("user", JSON.stringify(user));
-          
-          return { error: false, user: user, msg: "User Login Successfully!" };
+
+          localStorage.setItem('token', res.token);
+          localStorage.setItem('user', JSON.stringify(user));
+
+          return { error: false, user: user, msg: 'User Login Successfully!' };
         } else {
           setError(res.msg);
           return res;
         }
       } catch (err) {
-        setError('Failed to login with backend');
-        return { error: true, msg: 'Failed to login with backend' };
+        setError('Failed to login with backend after Firebase auth');
+        return { error: true, msg: 'Failed to login with backend after Firebase auth' };
       }
     } else {
       setError(result.message);

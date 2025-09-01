@@ -156,8 +156,8 @@ const SignUp = () => {
   const signInWithGoogle = () => {
     signInWithPopup(auth, googleProvider)
       .then((result) => {
-        const credential = GoogleAuthProvider.credentialFromResult(result);
-        const token = credential.accessToken;
+  const credential = GoogleAuthProvider.credentialFromResult(result) || null;
+  const token = credential ? credential.accessToken : null;
         // The signed-in user info.
         const user = result.user;
 
@@ -222,11 +222,19 @@ const SignUp = () => {
         // The email of the user's account used.
         const email = error.customData.email;
         // The AuthCredential type that was used.
-        const credential = GoogleAuthProvider.credentialFromError(error);
+        const credential = GoogleAuthProvider.credentialFromError(error) || null;
+
+        let userMessage = errorMessage;
+        if (errorCode === 'auth/invalid-credential') {
+          userMessage = 'Google sign-up failed: invalid credential returned by provider.';
+        } else if (errorCode === 'auth/popup-closed-by-user') {
+          userMessage = 'Sign-in popup closed before completing sign-in.';
+        }
+
         context.setAlertBox({
           open: true,
           error: true,
-          msg: errorMessage,
+          msg: userMessage,
         });
         // ...
       });

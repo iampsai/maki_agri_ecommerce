@@ -145,8 +145,8 @@ const Products = () => {
   }, []);
 
   const deleteProduct = (id) => {
-    const userInfo = JSON.parse(localStorage.getItem("user"));
-    if (userInfo?.email === "marpa.stephen@gmail.com") {
+  const userInfo = JSON.parse(localStorage.getItem("user"));
+  if (userInfo?.isAdmin === true) {
       context.setProgress(40);
       setIsLoadingBar(true);
       deleteData(`/api/products/${id}`).then((res) => {
@@ -225,6 +225,8 @@ const Products = () => {
       });
     }
   };
+
+  console.log("productList",productList);
 
   return (
     <>

@@ -201,7 +201,7 @@ const UserList = () => {
                 />
               </Breadcrumbs>
 
-              <Link to="/users/add">
+              <Link to="/user/add">
                 <Button className="btn-blue  ml-3 pl-3 pr-3">Add User</Button>
               </Link>
             </div>
@@ -281,7 +281,7 @@ const UserList = () => {
                                 </TableCell>
                                 <TableCell align="center">
                                   <div className="action-buttons">
-                                    <Link to={`/users/edit/${user.id}`}>
+                                    <Link to={`/user/edit/${user.id}`}>
                                       <Button
                                         variant="outlined"
                                         color="primary"

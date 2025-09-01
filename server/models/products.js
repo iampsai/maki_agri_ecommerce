@@ -27,25 +27,35 @@ const productSchema = mongoose.Schema({
         type: Number,
         default: 0
     },
-    catName:{
-        type:String,
-        default:''
+    /* per-variation pricing: array of { type: 'productWeight'|'size', value: '100g'|'L', price: Number, oldPrice: Number }
+       If this is present, frontends can use these prices instead of top-level price for the specific variation. */
+    variantPrices: [
+        {
+            type: { type: String, default: null },
+            value: { type: String, default: null },
+            price: { type: Number, default: 0 },
+            oldPrice: { type: Number, default: 0 },
+        }
+    ],
+    catName: {
+        type: String,
+        default: ''
     },
-    catId:{
-        type:String,
-        default:''
+    catId: {
+        type: String,
+        default: ''
     },
-    subCatId:{
-        type:String,
-        default:''
+    subCatId: {
+        type: String,
+        default: ''
     },
-    subCat:{
-        type:String,
-        default:''
+    subCat: {
+        type: String,
+        default: ''
     },
-    subCatName:{
-        type:String,
-        default:''
+    subCatName: {
+        type: String,
+        default: ''
     },
     category: {
         type: mongoose.Schema.Types.ObjectId,
@@ -87,15 +97,19 @@ const productSchema = mongoose.Schema({
         }
     ],
     location: [
-    {
-      value: {
-        type: String,
-      },
-      label: {
-        type: String,
-      }
+        {
+            value: {
+                type: String,
+            },
+            label: {
+                type: String,
+            }
+        },
+    ],
+    expiryDate: {
+        type: Date,
+        default: null,
     },
-  ],
     dateCreated: {
         type: Date,
         default: Date.now,

@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useContext } from "react";
+import React, { useState, useEffect, useContext, useCallback } from "react";
 import { MyContext } from "../../App";
-import { fetchDataFromApi } from "../../utils/api";
+import { fetchDataFromApi, postData, editData } from "../../utils/api";
 import {
   Paper,
   Table,
@@ -62,51 +62,73 @@ const ChatMessages = () => {
   const [currentUser, setCurrentUser] = useState(null);
   const [replyMessage, setReplyMessage] = useState("");
   const [sendingReply, setSendingReply] = useState(false);
-  
+
   const context = useContext(MyContext);
-
-  useEffect(() => {
-    context.setProgress(30);
-    fetchAllChatMessages();
-  }, []);
-
-  useEffect(() => {
-    if (chatMessages.length > 0) {
-      filterMessages();
-    }
-  }, [searchQuery, chatMessages]);
-
-  const fetchAllChatMessages = async () => {
+  const { setProgress, setAlertBox } = context;
+  const fetchAllChatMessages = useCallback(async () => {
     try {
       setLoading(true);
-      context.setProgress(50);
+      setProgress(50);
       // This endpoint would need to be created on the server to get all chat messages
-      const response = await fetchDataFromApi("/api/chat/admin/messages");
-      
+      let response = await fetchDataFromApi("/api/chat/admin/messages");
+
+      // If main endpoint returns empty, continue with empty array (don't fallback to test)
+      if (!response) {
+        console.warn('Admin messages endpoint returned no response');
+      }
+
+      // Normalize response: accept array, or { success: true, data: [...] }
+      let messagesPayload = [];
+      if (Array.isArray(response)) {
+        messagesPayload = response;
+      } else if (response && response.success && Array.isArray(response.data)) {
+        messagesPayload = response.data;
+      } else if (response && Array.isArray(response.messages)) {
+        messagesPayload = response.messages;
+      } else {
+        // Unexpected response shape
+        console.error('Unexpected response for chat admin messages:', response);
+        setAlertBox({ open: true, error: true, msg: (response && (response.msg || response.message)) || 'Failed to load chat messages' });
+        setLoading(false);
+        return;
+      }
+
+      // Debug: log received payload size
+      console.debug('fetchAllChatMessages: received response shape', Array.isArray(response) ? `array(${response.length})` : typeof response);
       // Group messages by user and sort by timestamp
-      const processedMessages = processMessages(response);
-      
+      const processedMessages = processMessages(messagesPayload);
+
       setChatMessages(processedMessages);
       setFilteredMessages(processedMessages);
-      context.setProgress(100);
+      setProgress(100);
     } catch (error) {
       console.error("Error fetching chat messages:", error);
-      context.setAlertBox({
+      setAlertBox({
         open: true,
         error: true,
         msg: "Failed to load chat messages"
       });
-      context.setProgress(100);
+      setProgress(100);
     } finally {
       setLoading(false);
     }
-  };
+  }, [setProgress, setAlertBox]);
+
+  // Trigger initial load of chat messages once fetchAllChatMessages is defined
+  // Trigger initial load once fetchAllChatMessages is stable
+  useEffect(() => {
+    setProgress(30);
+    fetchAllChatMessages();
+  }, [fetchAllChatMessages, setProgress]);
+
+  // fetchAllChatMessages effect moved below the function declaration to avoid
+  // referencing it before initialization (TDZ) — see bottom of this file.
 
   // Process messages to group by user and include user info
   const processMessages = (messages) => {
     // Group messages by userId
     const userGroups = {};
-    
+
     messages.forEach(msg => {
       if (!userGroups[msg.userId]) {
         userGroups[msg.userId] = {
@@ -118,47 +140,53 @@ const ChatMessages = () => {
           lastMessageTime: null
         };
       }
-      
+
       // Add message to user's group
       userGroups[msg.userId].messages.push(msg);
-      
+
       // Check if this is an unread message from user
       if (msg.sender === 'user' && !msg.isRead) {
         userGroups[msg.userId].hasUnread = true;
       }
-      
+
       // Update last message time if newer
       const msgTime = new Date(msg.timestamp).getTime();
-      if (!userGroups[msg.userId].lastMessageTime || 
-          msgTime > userGroups[msg.userId].lastMessageTime) {
+      if (!userGroups[msg.userId].lastMessageTime ||
+        msgTime > userGroups[msg.userId].lastMessageTime) {
         userGroups[msg.userId].lastMessageTime = msgTime;
       }
     });
-    
+
     // Convert to array and sort by last message time (newest first)
-    return Object.values(userGroups).sort((a, b) => 
+    return Object.values(userGroups).sort((a, b) =>
       b.lastMessageTime - a.lastMessageTime
     );
   };
 
-  const filterMessages = () => {
+  const filterMessages = useCallback(() => {
     if (!searchQuery.trim()) {
       setFilteredMessages(chatMessages);
       return;
     }
-    
+
     const query = searchQuery.toLowerCase();
-    const filtered = chatMessages.filter(userChat => 
+    const filtered = chatMessages.filter(userChat =>
       userChat.userName.toLowerCase().includes(query) ||
       userChat.userEmail.toLowerCase().includes(query) ||
-      userChat.messages.some(msg => 
+      userChat.messages.some(msg =>
         msg.message.toLowerCase().includes(query)
       )
     );
-    
+
     setFilteredMessages(filtered);
     setPage(0);
-  };
+  }, [searchQuery, chatMessages]);
+
+  useEffect(() => {
+    if (chatMessages.length > 0) {
+      filterMessages();
+    }
+  }, [searchQuery, chatMessages, filterMessages]);
 
   const handleChangePage = (event, newPage) => {
     setPage(newPage);
@@ -181,36 +209,33 @@ const ChatMessages = () => {
 
   const handleReplySubmit = async () => {
     if (!replyMessage.trim() || !currentUser) return;
-    
+
     try {
       setSendingReply(true);
       context.setProgress(30);
-      
+
       // Send admin reply
-      await fetchDataFromApi(`/api/chat/admin/reply`, {
-        method: 'POST',
-        body: JSON.stringify({
-          userId: currentUser.userId,
-          message: replyMessage
-        })
+      await postData('/api/chat/admin/reply', {
+        userId: currentUser.userId,
+        message: replyMessage
       });
-      
+
       // Success
-      context.setAlertBox({
+      setAlertBox({
         open: true,
         error: false,
         msg: "Reply sent successfully"
       });
-      
+
       // Refresh messages
       await fetchAllChatMessages();
-      
+
       // Close dialog
       handleReplyClose();
       context.setProgress(100);
     } catch (error) {
       console.error("Error sending reply:", error);
-      context.setAlertBox({
+      setAlertBox({
         open: true,
         error: true,
         msg: "Failed to send reply"
@@ -224,13 +249,12 @@ const ChatMessages = () => {
   const markAsRead = async (userChat) => {
     try {
       context.setProgress(30);
-      
+
       // Mark all messages as read for this user
-      await fetchDataFromApi(`/api/chat/admin/mark-read/${userChat.userId}`, {
-        method: 'PUT'
-      });
-      
-      // Update local state
+      const res = await editData(`/api/chat/admin/mark-read/${userChat.userId}`, {});
+      console.debug('markAsRead: api response', res);
+
+      // Update local state optimistically
       const updatedMessages = chatMessages.map(chat => {
         if (chat.userId === userChat.userId) {
           return {
@@ -244,20 +268,42 @@ const ChatMessages = () => {
         }
         return chat;
       });
-      
+
       setChatMessages(updatedMessages);
-      setFilteredMessages(filterMessages());
-      
-      context.setAlertBox({
+
+      // Re-fetch from server to ensure persistence and canonical state
+      // Re-fetch from server to ensure persistence and canonical state
+      try {
+        await fetchAllChatMessages();
+        // notify other components (sidebar badge) to refresh
+        try { window.dispatchEvent(new Event('chat:updated')); } catch (e) { /* ignore */ }
+      } catch (e) {
+        console.debug('Error reloading messages after markAsRead', e);
+      }
+
+      // Re-apply current search filter to updated messages
+      if (!searchQuery.trim()) {
+        setFilteredMessages(updatedMessages);
+      } else {
+        const q = searchQuery.toLowerCase();
+        const filtered = updatedMessages.filter(userChat =>
+          userChat.userName.toLowerCase().includes(q) ||
+          userChat.userEmail.toLowerCase().includes(q) ||
+          userChat.messages.some(msg => msg.message.toLowerCase().includes(q))
+        );
+        setFilteredMessages(filtered);
+      }
+
+      setAlertBox({
         open: true,
         error: false,
         msg: "Messages marked as read"
       });
-      
+
       context.setProgress(100);
     } catch (error) {
       console.error("Error marking messages as read:", error);
-      context.setAlertBox({
+      setAlertBox({
         open: true,
         error: true,
         msg: "Failed to mark messages as read"
@@ -275,12 +321,12 @@ const ChatMessages = () => {
     if (!userChat.messages || userChat.messages.length === 0) {
       return "No messages";
     }
-    
+
     // Sort by timestamp (newest first)
     const sortedMessages = [...userChat.messages].sort(
       (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
     );
-    
+
     return sortedMessages[0].message;
   };
 
@@ -288,12 +334,12 @@ const ChatMessages = () => {
     if (!userChat.messages || userChat.messages.length === 0) {
       return "N/A";
     }
-    
+
     // Sort by timestamp (newest first)
     const sortedMessages = [...userChat.messages].sort(
       (a, b) => new Date(b.timestamp) - new Date(a.timestamp)
     );
-    
+
     return formatDate(sortedMessages[0].timestamp);
   };
 
@@ -302,13 +348,13 @@ const ChatMessages = () => {
       <div className="content-wrapper">
         <div className="card shadow border-0 w-100 flex-row p-4 align-items-center">
           <h5 className="mb-0">Customer Messages</h5>
-          
+
           <div className="ml-auto d-flex align-items-center">
             <Breadcrumbs aria-label="breadcrumb" className="ml-auto breadcrumbs_">
-              <StyledBreadcrumb 
-                component="a" 
-                href="/" 
-                label="Dashboard" 
+              <StyledBreadcrumb
+                component="a"
+                href="/"
+                label="Dashboard"
                 icon={<HomeIcon fontSize="small" />}
               />
               <StyledBreadcrumb
@@ -318,7 +364,7 @@ const ChatMessages = () => {
             </Breadcrumbs>
           </div>
         </div>
-        
+
         <div className="card shadow border-0 p-3 mt-4">
           <div className="search-bar mb-4">
             <TextField
@@ -337,7 +383,7 @@ const ChatMessages = () => {
               }}
             />
           </div>
-          
+
           <Paper>
             {loading ? (
               <div className="d-flex justify-content-center align-items-center" style={{ height: "400px" }}>
@@ -384,10 +430,10 @@ const ChatMessages = () => {
                                 </div>
                               </TableCell>
                               <TableCell>
-                                <Typography 
-                                  variant="body2" 
-                                  noWrap 
-                                  style={{ 
+                                <Typography
+                                  variant="body2"
+                                  noWrap
+                                  style={{
                                     maxWidth: 300,
                                     overflow: 'hidden',
                                     textOverflow: 'ellipsis',
@@ -411,7 +457,7 @@ const ChatMessages = () => {
                                     variant="outlined"
                                     color="primary"
                                     size="small"
-                                    className="me-2"
+                                    className="mr-2"
                                     onClick={() => handleReplyClick(userChat)}
                                     startIcon={<FaReply />}
                                   >
@@ -455,7 +501,7 @@ const ChatMessages = () => {
             )}
           </Paper>
         </div>
-        
+
         {/* Reply Dialog */}
         <Dialog open={replyDialogOpen} onClose={handleReplyClose} maxWidth="md" fullWidth>
           <DialogTitle>
@@ -473,8 +519,8 @@ const ChatMessages = () => {
                   .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp))
                   .slice(-5)
                   .map((msg, idx) => (
-                    <div 
-                      key={idx} 
+                    <div
+                      key={idx}
                       className={`message mb-2 ${msg.sender === 'user' ? 'text-left' : 'text-right'}`}
                     >
                       <Chip
@@ -511,8 +557,8 @@ const ChatMessages = () => {
             <Button onClick={handleReplyClose} color="primary">
               Cancel
             </Button>
-            <Button 
-              onClick={handleReplySubmit} 
+            <Button
+              onClick={handleReplySubmit}
               color="primary"
               variant="contained"
               disabled={!replyMessage.trim() || sendingReply}

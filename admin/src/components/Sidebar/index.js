@@ -3,55 +3,98 @@ import { MdDashboard } from "react-icons/md";
 import { FaAngleRight } from "react-icons/fa6";
 import { FaProductHunt } from "react-icons/fa";
 import { FaCartArrowDown } from "react-icons/fa6";
-import { MdMessage } from "react-icons/md";
-import { FaBell } from "react-icons/fa6";
-import { IoIosSettings } from "react-icons/io";
 import { Link, NavLink } from "react-router-dom";
 import { useContext, useState } from "react";
 import { IoMdLogOut } from "react-icons/io";
 import { MyContext } from "../../App";
-import { FaClipboardCheck } from "react-icons/fa";
+// ...existing imports
 import { useNavigate } from "react-router-dom";
 import { useEffect } from "react";
+import Badge from '@mui/material/Badge';
+import { fetchDataFromApi } from "../../utils/api";
 import { BiSolidCategory } from "react-icons/bi";
 import { TbSlideshow } from "react-icons/tb";
 import { FaUsersCog } from "react-icons/fa";
 import { MdInventory } from "react-icons/md";
 import { FaChartBar } from "react-icons/fa";
+import { MdOutlineChat } from "react-icons/md";
 
 const Sidebar = () => {
   const [activeTab, setActiveTab] = useState(0);
   const [isToggleSubmenu, setIsToggleSubmenu] = useState(false);
-  const [isLogin, setIsLogin] = useState(false);
   const [isAdmin, setIsAdmin] = useState(false);
   const [userRole, setUserRole] = useState("");
 
   const context = useContext(MyContext);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const isOpenSubmenu = (index) => {
     setActiveTab(index);
-    if(activeTab===index){
+    if (activeTab === index) {
       setIsToggleSubmenu(!isToggleSubmenu);
-    }else{
+    } else {
       setIsToggleSubmenu(false);
       setIsToggleSubmenu(true);
     }
-   
+
   };
   const history = useNavigate();
 
   useEffect(() => {
     const token = localStorage.getItem("token");
-    if (token !== "" && token !== undefined && token !== null) {
-      setIsLogin(true);
+    if (!(token === "" || token === undefined || token === null)) {
+      // token exists; proceed
     } else {
       history("/login");
     }
-    
+
     // Check for user data and role
     checkUserRole();
-  }, []);
-  
+  }, [history]);
+
+  // Fetch unread chat messages count for badge
+  useEffect(() => {
+    let mounted = true;
+
+    const normalizeMessages = (res) => {
+      if (!res) return [];
+      if (Array.isArray(res)) return res;
+      if (res.data && Array.isArray(res.data)) return res.data;
+      if (res.messages && Array.isArray(res.messages)) return res.messages;
+      if (res.result && Array.isArray(res.result)) return res.result;
+      if (res.data && res.data.messages && Array.isArray(res.data.messages)) return res.data.messages;
+      return [];
+    };
+
+    const doFetch = async () => {
+      try {
+        const res = await fetchDataFromApi("/api/chat/admin/messages");
+        const messages = normalizeMessages(res);
+        const count = messages.filter((m) => {
+          // handle boolean, string, numeric representations
+          return m && (m.isRead === false || m.isRead === 'false' || m.isRead === 0 || m.isRead === '0');
+        }).length;
+        if (mounted) setUnreadCount(count);
+      } catch (err) {
+        console.debug("Sidebar: failed to load chat messages for badge", err && err.message ? err.message : err);
+      }
+    };
+
+    doFetch();
+
+    // Listen for updates triggered elsewhere in the app
+    const onChatUpdated = () => {
+      doFetch();
+    };
+
+    window.addEventListener('chat:updated', onChatUpdated);
+
+    return () => {
+      mounted = false;
+      window.removeEventListener('chat:updated', onChatUpdated);
+    };
+  }, [context.user]);
+
   // Add a separate function to check user role that can be called when context changes
   const checkUserRole = () => {
     try {
@@ -60,7 +103,7 @@ const Sidebar = () => {
         // Store the role for debugging
         const role = userData.role || (userData.isAdmin ? 'admin' : 'user');
         setUserRole(role);
-        
+
         // Strict check for admin role only
         const isUserAdmin = role === 'admin' || userData.isAdmin === true;
         setIsAdmin(isUserAdmin);
@@ -75,7 +118,7 @@ const Sidebar = () => {
       setUserRole("");
     }
   };
-  
+
   // Re-check user role when context.user changes
   useEffect(() => {
     checkUserRole();
@@ -100,7 +143,7 @@ const Sidebar = () => {
       <div className="sidebar">
         <ul>
           <li>
-            <NavLink exact activeClassName="is-active" to="/">
+            <NavLink to="/" className={({ isActive }) => (isActive ? 'is-active' : '')}>
               <Button
                 className={`w-100 ${activeTab === 0 ? "active" : ""}`}
                 onClick={() => {
@@ -118,9 +161,8 @@ const Sidebar = () => {
 
           <li>
             <Button
-              className={`w-100 ${
-                activeTab === 2 && isToggleSubmenu === true ? "active" : ""
-              }`}
+              className={`w-100 ${activeTab === 2 && isToggleSubmenu === true ? "active" : ""
+                }`}
               onClick={() => isOpenSubmenu(2)}
             >
               <span className="icon">
@@ -132,11 +174,10 @@ const Sidebar = () => {
               </span>
             </Button>
             <div
-              className={`submenuWrapper ${
-                activeTab === 2 && isToggleSubmenu === true
+              className={`submenuWrapper ${activeTab === 2 && isToggleSubmenu === true
                   ? "colapse"
                   : "colapsed"
-              }`}
+                }`}
             >
               <ul className="submenu">
                 <li>
@@ -177,9 +218,8 @@ const Sidebar = () => {
 
           <li>
             <Button
-              className={`w-100 ${
-                activeTab === 3 && isToggleSubmenu === true ? "active" : ""
-              }`}
+              className={`w-100 ${activeTab === 3 && isToggleSubmenu === true ? "active" : ""
+                }`}
               onClick={() => isOpenSubmenu(3)}
             >
               <span className="icon">
@@ -191,18 +231,16 @@ const Sidebar = () => {
               </span>
             </Button>
             <div
-              className={`submenuWrapper ${
-                activeTab === 3 && isToggleSubmenu === true
+              className={`submenuWrapper ${activeTab === 3 && isToggleSubmenu === true
                   ? "colapse"
                   : "colapsed"
-              }`}
+                }`}
             >
               <ul className="submenu">
                 <li>
                   <NavLink
-                    exact
-                    activeClassName="is-active"
                     to="/products"
+                    className={({ isActive }) => (isActive ? 'is-active' : '')}
                     onClick={() => context.setIsOpenNav(false)}
                   >
                     Product List
@@ -211,32 +249,29 @@ const Sidebar = () => {
 
                 <li>
                   <NavLink
-                    exact
-                    activeClassName="is-active"
-                    to="/product/upload"
-                    onClick={() => context.setIsOpenNav(false)}
-                  >
+                      to="/product/upload"
+                      className={({ isActive }) => (isActive ? 'is-active' : '')}
+                      onClick={() => context.setIsOpenNav(false)}
+                    >
                     Product Upload
                   </NavLink>
                 </li>
-        
+
                 <li>
                   <NavLink
-                    exact
-                    activeClassName="is-active"
-                    to="/productWEIGHT/add"
-                    onClick={() => context.setIsOpenNav(false)}
-                  >
+                      to="/productWEIGHT/add"
+                      className={({ isActive }) => (isActive ? 'is-active' : '')}
+                      onClick={() => context.setIsOpenNav(false)}
+                    >
                     Add Product WEIGHT
                   </NavLink>
                 </li>
                 <li>
                   <NavLink
-                    exact
-                    activeClassName="is-active"
-                    to="/productSIZE/add"
-                    onClick={() => context.setIsOpenNav(false)}
-                  >
+                      to="/productSIZE/add"
+                      className={({ isActive }) => (isActive ? 'is-active' : '')}
+                      onClick={() => context.setIsOpenNav(false)}
+                    >
                     Add Product SIZE
                   </NavLink>
                 </li>
@@ -245,11 +280,10 @@ const Sidebar = () => {
           </li>
 
           <li>
-            <NavLink exact activeClassName="is-active" to="/orders">
+            <NavLink to="/orders" className={({ isActive }) => (isActive ? 'is-active' : '')}>
               <Button
-                className={`w-100 ${
-                  activeTab === 4 && isToggleSubmenu === true ? "active" : ""
-                }`}
+                className={`w-100 ${activeTab === 4 && isToggleSubmenu === true ? "active" : ""
+                  }`}
                 onClick={() => {
                   isOpenSubmenu(4);
                   context.setIsOpenNav(false);
@@ -266,11 +300,10 @@ const Sidebar = () => {
           {/* Stock Management - Visible to both staff and admin */}
           {(userRole === 'staff' || userRole === 'admin') && (
             <li>
-              <NavLink exact activeClassName="is-active" to="/stock-management">
+              <NavLink to="/stock-management" className={({ isActive }) => (isActive ? 'is-active' : '')}>
                 <Button
-                  className={`w-100 ${
-                    activeTab === 9 && isToggleSubmenu === true ? "active" : ""
-                  }`}
+                  className={`w-100 ${activeTab === 9 && isToggleSubmenu === true ? "active" : ""
+                    }`}
                   onClick={() => {
                     isOpenSubmenu(9);
                     context.setIsOpenNav(false);
@@ -287,33 +320,53 @@ const Sidebar = () => {
 
           {/* Reports - Only visible to admin users */}
           {(userRole === 'admin' || userRole === 'staff') && (
-            <li>
-              <NavLink exact activeClassName="is-active" to="/reports">
-                <Button
-                  className={`w-100 ${
-                    activeTab === 10 && isToggleSubmenu === true ? "active" : ""
-                  }`}
-                  onClick={() => {
-                    isOpenSubmenu(10);
-                    context.setIsOpenNav(false);
-                  }}
-                >
-                  <span className="icon">
-                    <FaChartBar />
-                  </span>
-                  Reports
-                </Button>
+            <>
+              <li>
+                <NavLink to="/reports" className={({ isActive }) => (isActive ? 'is-active' : '')}>
+                  <Button
+                    className={`w-100 ${activeTab === 10 && isToggleSubmenu === true ? "active" : ""
+                      }`}
+                    onClick={() => {
+                      isOpenSubmenu(10);
+                      context.setIsOpenNav(false);
+                    }}
+                  >
+                    <span className="icon">
+                      <FaChartBar />
+                    </span>
+                    Reports
+                  </Button>
+                </NavLink>
+              </li>
+              <li>
+              <NavLink to="/chat" className={({ isActive }) => (isActive ? 'is-active' : '')}>
+                  <Button
+                    className={`w-100 ${
+                      activeTab === 11 && isToggleSubmenu === true ? "active" : ""
+                    }`}
+                    onClick={() => {
+                      isOpenSubmenu(11);
+                      context.setIsOpenNav(false);
+                    }}
+                  >
+                    <span className="icon">
+                      <MdOutlineChat />
+                    </span>
+                    <Badge color="error" badgeContent={unreadCount} max={99}>
+                      <span>Chat Support</span>
+                    </Badge>
+                  </Button>
               </NavLink>
             </li>
+            </>
           )}
-          
+
           {/* User Management - Only visible to admin users */}
           {isAdmin && userRole === 'admin' && (
             <li>
               <Button
-                className={`w-100 ${
-                  activeTab === 8 && isToggleSubmenu === true ? "active" : ""
-                }`}
+                className={`w-100 ${activeTab === 8 && isToggleSubmenu === true ? "active" : ""
+                  }`}
                 onClick={() => isOpenSubmenu(8)}
               >
                 <span className="icon">
@@ -325,18 +378,16 @@ const Sidebar = () => {
                 </span>
               </Button>
               <div
-                className={`submenuWrapper ${
-                  activeTab === 8 && isToggleSubmenu === true
+                className={`submenuWrapper ${activeTab === 8 && isToggleSubmenu === true
                     ? "colapse"
                     : "colapsed"
-                }`}
+                  }`}
               >
                 <ul className="submenu">
                   <li>
                     <NavLink
-                      exact
-                      activeClassName="is-active"
                       to="/users"
+                      className={({ isActive }) => (isActive ? 'is-active' : '')}
                       onClick={() => context.setIsOpenNav(false)}
                     >
                       User List
@@ -344,12 +395,21 @@ const Sidebar = () => {
                   </li>
                   <li>
                     <NavLink
-                      exact
-                      activeClassName="is-active"
-                      to="/users/add"
+                      to="/user/add"
+                      className={({ isActive }) => (isActive ? 'is-active' : '')}
                       onClick={() => context.setIsOpenNav(false)}
                     >
                       Add User
+                    </NavLink>
+                  </li>
+
+                  <li>
+                    <NavLink
+                      to="/user/add-rider"
+                      className={({ isActive }) => (isActive ? 'is-active' : '')}
+                      onClick={() => context.setIsOpenNav(false)}
+                    >
+                      Add Rider
                     </NavLink>
                   </li>
                 </ul>
@@ -359,9 +419,8 @@ const Sidebar = () => {
 
           <li>
             <Button
-              className={`w-100 ${
-                activeTab === 5 && isToggleSubmenu === true ? "active" : ""
-              }`}
+              className={`w-100 ${activeTab === 5 && isToggleSubmenu === true ? "active" : ""
+                }`}
               onClick={() => isOpenSubmenu(5)}
             >
               <span className="icon">
@@ -373,18 +432,16 @@ const Sidebar = () => {
               </span>
             </Button>
             <div
-              className={`submenuWrapper ${
-                activeTab === 5 && isToggleSubmenu === true
+              className={`submenuWrapper ${activeTab === 5 && isToggleSubmenu === true
                   ? "colapse"
                   : "colapsed"
-              }`}
+                }`}
             >
               <ul className="submenu">
                 <li>
                   <NavLink
-                    exact
-                    activeClassName="is-active"
                     to="/banners"
+                    className={({ isActive }) => (isActive ? 'is-active' : '')}
                     onClick={() => context.setIsOpenNav(false)}
                   >
                     Banners List
@@ -393,9 +450,8 @@ const Sidebar = () => {
 
                 <li>
                   <NavLink
-                    exact
-                    activeClassName="is-active"
                     to="/banners/add"
+                    className={({ isActive }) => (isActive ? 'is-active' : '')}
                     onClick={() => context.setIsOpenNav(false)}
                   >
                     Banner Upload
@@ -407,9 +463,8 @@ const Sidebar = () => {
 
           <li>
             <Button
-              className={`w-100 ${
-                activeTab === 1 && isToggleSubmenu === true ? "active" : ""
-              }`}
+              className={`w-100 ${activeTab === 1 && isToggleSubmenu === true ? "active" : ""
+                }`}
               onClick={() => isOpenSubmenu(1)}
             >
               <span className="icon">
@@ -421,18 +476,16 @@ const Sidebar = () => {
               </span>
             </Button>
             <div
-              className={`submenuWrapper ${
-                activeTab === 1 && isToggleSubmenu === true
+              className={`submenuWrapper ${activeTab === 1 && isToggleSubmenu === true
                   ? "colapse"
                   : "colapsed"
-              }`}
+                }`}
             >
               <ul className="submenu">
                 <li>
                   <NavLink
-                    exact
-                    activeClassName="is-active"
                     to="/homeBannerSlide/add"
+                    className={({ isActive }) => (isActive ? 'is-active' : '')}
                     onClick={() => context.setIsOpenNav(false)}
                   >
                     Add Home Banner Slide
@@ -440,9 +493,8 @@ const Sidebar = () => {
                 </li>
                 <li>
                   <NavLink
-                    exact
-                    activeClassName="is-active"
                     to="/homeBannerSlide/list"
+                    className={({ isActive }) => (isActive ? 'is-active' : '')}
                     onClick={() => context.setIsOpenNav(false)}
                   >
                     Home Slides List
@@ -454,9 +506,8 @@ const Sidebar = () => {
 
           <li>
             <Button
-              className={`w-100 ${
-                activeTab === 6 && isToggleSubmenu === true ? "active" : ""
-              }`}
+              className={`w-100 ${activeTab === 6 && isToggleSubmenu === true ? "active" : ""
+                }`}
               onClick={() => isOpenSubmenu(6)}
             >
               <span className="icon">
@@ -468,18 +519,16 @@ const Sidebar = () => {
               </span>
             </Button>
             <div
-              className={`submenuWrapper ${
-                activeTab === 6 && isToggleSubmenu === true
+              className={`submenuWrapper ${activeTab === 6 && isToggleSubmenu === true
                   ? "colapse"
                   : "colapsed"
-              }`}
+                }`}
             >
               <ul className="submenu">
                 <li>
                   <NavLink
-                    exact
-                    activeClassName="is-active"
                     to="/homeSideBanners"
+                    className={({ isActive }) => (isActive ? 'is-active' : '')}
                     onClick={() => context.setIsOpenNav(false)}
                   >
                     Banners List
@@ -488,9 +537,8 @@ const Sidebar = () => {
 
                 <li>
                   <NavLink
-                    exact
-                    activeClassName="is-active"
                     to="/homeSideBanners/add"
+                    className={({ isActive }) => (isActive ? 'is-active' : '')}
                     onClick={() => context.setIsOpenNav(false)}
                   >
                     Banner Upload
@@ -502,9 +550,8 @@ const Sidebar = () => {
 
           <li>
             <Button
-              className={`w-100 ${
-                activeTab === 7 && isToggleSubmenu === true ? "active" : ""
-              }`}
+              className={`w-100 ${activeTab === 7 && isToggleSubmenu === true ? "active" : ""
+                }`}
               onClick={() => isOpenSubmenu(7)}
             >
               <span className="icon">
@@ -516,18 +563,16 @@ const Sidebar = () => {
               </span>
             </Button>
             <div
-              className={`submenuWrapper ${
-                activeTab === 7 && isToggleSubmenu === true
+              className={`submenuWrapper ${activeTab === 7 && isToggleSubmenu === true
                   ? "colapse"
                   : "colapsed"
-              }`}
+                }`}
             >
               <ul className="submenu">
                 <li>
                   <NavLink
-                    exact
-                    activeClassName="is-active"
                     to="/homeBottomBanners"
+                    className={({ isActive }) => (isActive ? 'is-active' : '')}
                     onClick={() => context.setIsOpenNav(false)}
                   >
                     Banners List
@@ -536,9 +581,8 @@ const Sidebar = () => {
 
                 <li>
                   <NavLink
-                    exact
-                    activeClassName="is-active"
                     to="/homeBottomBanners/add"
+                    className={({ isActive }) => (isActive ? 'is-active' : '')}
                     onClick={() => context.setIsOpenNav(false)}
                   >
                     Banner Upload

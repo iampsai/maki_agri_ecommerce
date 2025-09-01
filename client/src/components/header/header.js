@@ -26,7 +26,7 @@ import { fetchDataFromApi } from "../../utils/api";
 const Header = (props) => {
   const [isOpenDropDown, setisOpenDropDown] = useState(false);
   const [isOpenAccDropDown, setisOpenAccDropDown] = useState(false);
-  
+
 
   const headerRef = useRef();
 
@@ -58,6 +58,21 @@ const Header = (props) => {
   useEffect(() => {
     setcategories(context.categories);
   }, [context.categories]);
+
+  const isRider = (() => {
+    try {
+      const userFromContext = context?.user;
+      if (userFromContext && userFromContext.role) {
+        return (userFromContext.role || '').toString().toLowerCase() === 'rider';
+      }
+      const stored = localStorage.getItem('user');
+      if (!stored) return false;
+      const parsed = JSON.parse(stored);
+      return (parsed.role || '').toString().toLowerCase() === 'rider';
+    } catch (e) {
+      return false;
+    }
+  })();
 
   const getCountry = async (url) => {
     try {
@@ -117,14 +132,16 @@ const Header = (props) => {
     setIsOpenNav(true);
     context.setIsopenNavigation(true)
     context?.setIsBottomShow(false);
-}
+  }
 
-const closeNav = () => {
+  const closeNav = () => {
     setIsOpenNav(false);
     setisOpenAccDropDown(false)
     context.setIsopenNavigation(false);
     context?.setIsBottomShow(true);
-}
+  }
+
+  console.log("login status", context.isLogin);
 
   return (
     <>
@@ -140,17 +157,19 @@ const closeNav = () => {
 
                 {context?.windowWidth < 992 && (
                   <ul className="list list-inline mb-0 headerTabs pl-0">
-                    <li className="list-inline-item ml-0">
-                      <span>
-                        <Link to={"/cart"}>
-                          <ShoppingCartOutlinedIcon />
-                          <span className="badge bg-success rounded-circle">
-                            {context.cartItems.length}
-                          </span>
-                          Cart
-                        </Link>
-                      </span>
-                    </li>
+                    {!isRider && (
+                      <li className="list-inline-item ml-0">
+                        <span>
+                          <Link to={"/cart"}>
+                            <ShoppingCartOutlinedIcon />
+                            <span className="badge bg-success rounded-circle">
+                              {context.cartItems.length}
+                            </span>
+                            Cart
+                          </Link>
+                        </span>
+                      </li>
+                    )}
                   </ul>
                 )}
               </div>
@@ -182,33 +201,37 @@ const closeNav = () => {
 
               <div className="col-sm-5 d-flex align-items-center part3 res-hide">
                 <div className="ml-auto d-flex align-items-center">
-              
+
                   <ClickAwayListener
                     onClickAway={() => setisOpenDropDown(false)}
                   >
                     <ul className="list list-inline mb-0 headerTabs">
-                      <li className="list-inline-item">
-                        <Link to="/myList">
-                          <span>
-                            <FavoriteBorderOutlinedIcon />
-                            <span className="badge bg-success rounded-circle">
-                              {context?.myListData?.length}
+                      {!isRider && (
+                        <>
+                          <li className="list-inline-item">
+                            <Link to="/myList">
+                              <span>
+                                <FavoriteBorderOutlinedIcon />
+                                <span className="badge bg-success rounded-circle">
+                                  {context?.myListData?.length}
+                                </span>
+                                Wishlist
+                              </span>
+                            </Link>
+                          </li>
+                          <li className="list-inline-item">
+                            <span>
+                              <Link to={"/cart"}>
+                                <ShoppingCartOutlinedIcon />
+                                <span className="badge bg-success rounded-circle">
+                                  {context.cartItems.length}
+                                </span>
+                                Cart
+                              </Link>
                             </span>
-                            Wishlist
-                          </span>
-                        </Link>
-                      </li>
-                      <li className="list-inline-item">
-                        <span>
-                          <Link to={"/cart"}>
-                            <ShoppingCartOutlinedIcon />
-                            <span className="badge bg-success rounded-circle">
-                              {context.cartItems.length}
-                            </span>
-                            Cart
-                          </Link>
-                        </span>
-                      </li>
+                          </li>
+                        </>
+                      )}
 
                       {context.isLogin === true ? (
                         <li className="list-inline-item">
@@ -216,51 +239,75 @@ const closeNav = () => {
                             onClick={() => setisOpenDropDown(!isOpenDropDown)}
                           >
                             <Person2OutlinedIcon />
-                            Account
+                            {isRider ? 'Rider' : 'Account'}
                           </span>
 
                           {isOpenDropDown !== false && (
                             <ul className="dropdownMenu">
-                              <li>
-                                <Link to="/my-account">
-                                  <Button
-                                    className="align-items-center"
-                                    onClick={() =>
-                                      setisOpenDropDown(!isOpenDropDown)
-                                    }
-                                  >
-                                    <Person2OutlinedIcon /> My Account
-                                  </Button>
-                                </Link>
-                              </li>
-                              <li>
-                                <Link to="/orders">
-                                  <Button
-                                    onClick={() =>
-                                      setisOpenDropDown(!isOpenDropDown)
-                                    }
-                                  >
-                                    <VerifiedIcon /> Orders
-                                  </Button>
-                                </Link>
-                              </li>
-                              <li>
-                                <Link to="/myList">
-                                  <Button
-                                    onClick={() =>
-                                      setisOpenDropDown(!isOpenDropDown)
-                                    }
-                                  >
-                                    <FavoriteBorderOutlinedIcon /> My Wishlist
-                                  </Button>
-                                </Link>
-                              </li>
+                              {isRider ? (
+                                <>
+                                  <li>
+                                    <Link to="/rider">
+                                      <Button
+                                        className="align-items-center"
+                                        onClick={() =>
+                                          setisOpenDropDown(!isOpenDropDown)
+                                        }
+                                      >
+                                        <Person2OutlinedIcon /> Rider Portal
+                                      </Button>
+                                    </Link>
+                                  </li>
+                                  <li>
+                                    <Button onClick={logout}>
+                                      <LogoutOutlinedIcon /> Sign out
+                                    </Button>
+                                  </li>
+                                </>
+                              ) : (
+                                <>
+                                  <li>
+                                    <Link to="/my-account">
+                                      <Button
+                                        className="align-items-center"
+                                        onClick={() =>
+                                          setisOpenDropDown(!isOpenDropDown)
+                                        }
+                                      >
+                                        <Person2OutlinedIcon /> My Account
+                                      </Button>
+                                    </Link>
+                                  </li>
+                                  <li>
+                                    <Link to="/orders">
+                                      <Button
+                                        onClick={() =>
+                                          setisOpenDropDown(!isOpenDropDown)
+                                        }
+                                      >
+                                        <VerifiedIcon /> Orders
+                                      </Button>
+                                    </Link>
+                                  </li>
+                                  <li>
+                                    <Link to="/myList">
+                                      <Button
+                                        onClick={() =>
+                                          setisOpenDropDown(!isOpenDropDown)
+                                        }
+                                      >
+                                        <FavoriteBorderOutlinedIcon /> My Wishlist
+                                      </Button>
+                                    </Link>
+                                  </li>
 
-                              <li>
-                                <Button onClick={logout}>
-                                  <LogoutOutlinedIcon /> Sign out
-                                </Button>
-                              </li>
+                                  <li>
+                                    <Button onClick={logout}>
+                                      <LogoutOutlinedIcon /> Sign out
+                                    </Button>
+                                  </li>
+                                </>
+                              )}
                             </ul>
                           )}
                         </li>

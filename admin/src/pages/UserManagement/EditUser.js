@@ -302,8 +302,9 @@ const EditUser = () => {
                       label="User Role"
                     >
                       <MenuItem value="user">Regular User (Client)</MenuItem>
-                      <MenuItem value="staff">Staff</MenuItem>
                       <MenuItem value="admin">Administrator</MenuItem>
+                      <MenuItem value="staff">Staff</MenuItem>
+                      <MenuItem value="rider">Rider</MenuItem>
                     </Select>
                   </FormControl>
                 </Grid>

@@ -178,7 +178,7 @@ const EditCategory = () => {
 
   const removeImg = async (indexToRemove, imgUrl, img_id) => {
     const userInfo = JSON.parse(localStorage.getItem("user"));
-    if (userInfo?.email === "rinkuv37@gmail.com") {
+  if (userInfo?.isAdmin === true) {
       setIsImageRemove(true);
       const previews_arr = previews;
 

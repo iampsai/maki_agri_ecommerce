@@ -57,8 +57,8 @@ const BannersList = () => {
   }, []);
 
   const deleteSlide = (id) => {
-    const userInfo = JSON.parse(localStorage.getItem("user"));
-    if (userInfo?.email === "rinkuv37@gmail.com") {
+  const userInfo = JSON.parse(localStorage.getItem("user"));
+  if (userInfo?.isAdmin === true) {
     context.setProgress(30);
       deleteData(`/api/banners/${id}`).then((res) => {
         context.setProgress(100);

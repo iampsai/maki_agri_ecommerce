@@ -75,7 +75,7 @@ const SignIn = () => {
         if (!result.error) {
           context.setIsLogin(true);
           context.setUser(result.user);
-          
+
           context.setAlertBox({
             open: true,
             error: false,
@@ -84,7 +84,13 @@ const SignIn = () => {
 
           setTimeout(() => {
             setIsLoading(false);
-            history("/");
+            // if rider, go to rider portal
+            const role = result.user?.role || JSON.parse(localStorage.getItem('user') || '{}')?.role;
+            if (role && role.toString().toLowerCase() === 'rider') {
+              history('/rider');
+            } else {
+              history('/');
+            }
           }, 2000);
         } else {
           if (result.isVerify === false) {

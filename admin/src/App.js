@@ -46,9 +46,11 @@ import MyAccount from "./pages/MyAccount";
 import VerifyAccount from "./pages/OtpVerify";
 import UserList from "./pages/UserManagement/UserList";
 import AddUser from "./pages/UserManagement/AddUser";
+import AddRider from "./pages/UserManagement/AddRider";
 import EditUser from "./pages/UserManagement/EditUser";
 import StockManagement from "./pages/StockManagement";
 import Reports from "./pages/Reports";
+import ChatMessages from "./pages/ChatMessages";
 
 
 
@@ -354,14 +356,18 @@ function App() {
               
               {/* User Management Routes - Accessible to admin only */}
               <Route path="/users" exact={true} element={<UserList />} />
-              <Route path="/users/add" exact={true} element={<AddUser />} />
-              <Route path="/users/edit/:id" exact={true} element={<EditUser />} />
+              <Route path="/user/add" exact={true} element={<AddUser />} />
+              <Route path="/user/add-rider" exact={true} element={<AddRider />} />
+              <Route path="/user/edit/:id" exact={true} element={<EditUser />} />
               
               {/* Stock Management Route - Accessible to staff and admin */}
               <Route path="/stock-management" exact={true} element={<StockManagement />} />
               
               {/* Reports Route - Accessible to admin only */}
               <Route path="/reports" exact={true} element={<Reports />} />
+
+              {/* Chat Route */}
+              <Route path="/chat" exact={true} element={<ChatMessages />} />
             </Routes>
           </div>
         </div>

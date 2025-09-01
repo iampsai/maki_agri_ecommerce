@@ -12,6 +12,7 @@ const multer = require("multer");
 const fs = require("fs");
 
 const cloudinary = require("cloudinary").v2;
+const { initFirebaseAdmin } = require('../utils/firebaseAdmin');
 
 cloudinary.config({
   cloud_name: process.env.cloudinary_Config_Cloud_Name,
@@ -19,6 +20,68 @@ cloudinary.config({
   api_secret: process.env.cloudinary_Config_api_secret,
   secure: true,
 });
+
+// Initialize Firebase Admin SDK (optional, requires service account JSON)
+const firebaseAdmin = initFirebaseAdmin();
+
+async function ensureFirebaseUser({ uid, email, password, displayName }) {
+  if (!firebaseAdmin) {
+    // Firebase Admin SDK not initialized; skip syncing to Firebase Auth.
+    return null;
+  }
+
+  try {
+    // If a uid is provided, try to fetch and update that user first
+    if (uid) {
+      try {
+        const userRecord = await firebaseAdmin.auth().getUser(uid);
+        const update = {};
+        if (email && userRecord.email !== email) update.email = email;
+        if (displayName && userRecord.displayName !== displayName) update.displayName = displayName;
+        if (password && typeof password === 'string' && password.length >= 6) update.password = password;
+        if (Object.keys(update).length > 0) {
+          await firebaseAdmin.auth().updateUser(uid, update);
+        }
+        return userRecord;
+      } catch (err) {
+        // If user not found by uid, fall through to try by email
+      }
+    }
+
+    if (email) {
+      try {
+        // Try to get existing Firebase user by email and update
+        const userByEmail = await firebaseAdmin.auth().getUserByEmail(email);
+        const update = {};
+        if (displayName && userByEmail.displayName !== displayName) update.displayName = displayName;
+        if (password && typeof password === 'string' && password.length >= 6) update.password = password;
+        if (Object.keys(update).length > 0) {
+          await firebaseAdmin.auth().updateUser(userByEmail.uid, update);
+        }
+        return userByEmail;
+      } catch (err) {
+        // If not found, try to create. Validate password before creating.
+        const createPayload = { email };
+        if (displayName) createPayload.displayName = displayName;
+        if (password && typeof password === 'string' && password.length >= 6) createPayload.password = password;
+
+        try {
+          const created = await firebaseAdmin.auth().createUser(createPayload);
+          return created;
+        } catch (createErr) {
+          // Log and continue without blocking main flow
+          console.error('Failed to create Firebase Auth user:', createErr);
+          return null;
+        }
+      }
+    }
+
+    return null;
+  } catch (err) {
+    console.error('Firebase user sync error:', err);
+    return null;
+  }
+}
 
 var imagesArr = [];
 
@@ -831,6 +894,16 @@ router.post(`/admin/create`, verifyAdminRole, async (req, res) => {
       isVerified: isVerified || false,
     });
 
+    // Try to create corresponding Firebase Auth user (optional)
+    try {
+      const fbUser = await ensureFirebaseUser({ email, password, displayName: name });
+      if (fbUser && fbUser.uid) {
+        user.firebaseUid = fbUser.uid;
+      }
+    } catch (err) {
+      console.error('Failed to sync user to Firebase Auth:', err);
+    }
+
     await user.save();
 
     // Send success response
@@ -850,6 +923,60 @@ router.post(`/admin/create`, verifyAdminRole, async (req, res) => {
       success: false,
       msg: "Something went wrong while creating user",
     });
+  }
+});
+
+// Admin: create a delivery rider
+router.post(`/admin/create-rider`, verifyAdminRole, async (req, res) => {
+  try {
+    const { name, phone, email, password, images, isVerified } = req.body;
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ success: false, msg: 'User with this email already exists' });
+    }
+
+    const hashPassword = password ? await bcrypt.hash(password, 10) : undefined;
+
+    // Admin-created riders should be considered verified by default unless explicitly set false
+    const finalIsVerified = (typeof isVerified !== 'undefined') ? Boolean(isVerified) : true;
+
+    const user = new User({
+      name,
+      phone,
+      email,
+      password: hashPassword,
+      images: images || [],
+      role: 'rider',
+      isVerified: finalIsVerified,
+    });
+
+    try {
+      const fbUser = await ensureFirebaseUser({ email, password: password, displayName: name });
+      if (fbUser && fbUser.uid) {
+        user.firebaseUid = fbUser.uid;
+      }
+    } catch (err) {
+      console.error('Failed to create rider in Firebase Auth:', err);
+    }
+
+    await user.save();
+
+    return res.status(201).json({ success: true, msg: 'Rider created', user });
+  } catch (error) {
+    console.error('Create rider error', error);
+    return res.status(500).json({ success: false, msg: 'Error creating rider' });
+  }
+});
+
+// Admin: list all riders
+router.get('/admin/riders', verifyAdminRole, async (req, res) => {
+  try {
+    const riders = await User.find({ role: 'rider' });
+    return res.status(200).json(riders);
+  } catch (error) {
+    console.error('List riders error', error);
+    return res.status(500).json({ success: false, msg: 'Error fetching riders' });
   }
 });
 
@@ -908,6 +1035,25 @@ router.put(`/admin/:id`, verifyAdminRole, async (req, res) => {
       updateData,
       { new: true, runValidators: true }
     );
+
+    // Sync changes to Firebase Auth (email/displayName/password)
+    try {
+      await ensureFirebaseUser({ uid: updatedUser.firebaseUid, email: updatedUser.email, password: password, displayName: updatedUser.name });
+      // If user didn't have firebaseUid but firebase exists for email, save it
+      if (!updatedUser.firebaseUid && firebaseAdmin) {
+        try {
+          const fb = await firebaseAdmin.auth().getUserByEmail(updatedUser.email);
+          if (fb && fb.uid) {
+            updatedUser.firebaseUid = fb.uid;
+            await updatedUser.save();
+          }
+        } catch (e) {
+          // ignore
+        }
+      }
+    } catch (err) {
+      console.error('Failed to sync updated user to Firebase Auth:', err);
+    }
 
     if (!updatedUser) {
       console.error("User update failed - user not found after update");

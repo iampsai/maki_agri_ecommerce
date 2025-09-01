@@ -227,7 +227,7 @@ const Dashboard = () => {
 
   const deleteProduct = async (id) => {
     const userInfo = JSON.parse(localStorage.getItem("user"));
-    if (userInfo?.email === "rinkuv37@gmail.com") {
+  if (userInfo?.isAdmin === true) {
       try {
         context.setProgress(40);
         await deleteData(`/api/products/${id}`);

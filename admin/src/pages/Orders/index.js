@@ -14,7 +14,7 @@ import { MdClose } from "react-icons/md";
 import Button from "@mui/material/Button";
 import { MdOutlineEmail } from "react-icons/md";
 import { FaPhoneAlt } from "react-icons/fa";
-import { MdOutlineCurrencyRupee } from "react-icons/md";
+import { MdOutlineCurrencyRupee, MdPhp } from "react-icons/md";
 import { MdOutlineDateRange } from "react-icons/md";
 
 import MenuItem from "@mui/material/MenuItem";
@@ -102,6 +102,11 @@ const columns = [
     minWidth: 120,
   },
   {
+    id: "rider",
+    label: "Rider / QR",
+    minWidth: 200,
+  },
+  {
     id: "dateCreated",
     label: "Date Created",
     minWidth: 150,
@@ -112,6 +117,11 @@ const Orders = () => {
   const [orders, setOrders] = useState([]);
   const [products, setproducts] = useState([]);
   const [isOpenModal, setIsOpenModal] = useState(false);
+  const [isRiderModalOpen, setIsRiderModalOpen] = useState(false);
+  const [riders, setRiders] = useState([]);
+  const [selectedOrderForRider, setSelectedOrderForRider] = useState(null);
+  const [selectedRiderId, setSelectedRiderId] = useState(null);
+  const [assigningLoading, setAssigningLoading] = useState(false);
 
   const [singleOrder, setSingleOrder] = useState();
   const [statusVal, setstatusVal] = useState(null);
@@ -137,6 +147,11 @@ const Orders = () => {
     fetchDataFromApi(`/api/orders`).then((res) => {
       setOrders(res);
     });
+
+    // fetch riders for assign dropdown (admin-only endpoint)
+    fetchDataFromApi(`/api/user/admin/riders`).then((res) => {
+      setRiders(res || []);
+    });
   }, []);
 
   const showProducts = (id) => {
@@ -144,6 +159,44 @@ const Orders = () => {
       setIsOpenModal(true);
       setproducts(res.products);
     });
+  };
+
+  const openRiderModal = async (order) => {
+    // fetch latest order details
+    const fresh = await fetchDataFromApi(`/api/orders/${order._id}`);
+    setSelectedOrderForRider(fresh);
+    setSelectedRiderId(fresh?.deliveryRider || null);
+    setIsRiderModalOpen(true);
+  };
+
+  const handleAssignRider = async () => {
+    if (!selectedOrderForRider || !selectedRiderId) return;
+    setAssigningLoading(true);
+    try {
+      await editData(`/api/orders/assign-rider/${selectedOrderForRider._id}`, {
+        riderId: selectedRiderId,
+      });
+      // refresh orders
+      const updated = await fetchDataFromApi(`/api/orders`);
+      setOrders(updated);
+      // refresh selected order
+      const fresh = await fetchDataFromApi(`/api/orders/${selectedOrderForRider._id}`);
+      setSelectedOrderForRider(fresh);
+    } catch (err) {
+      console.error('Assign rider error', err);
+    } finally {
+      setAssigningLoading(false);
+    }
+  };
+
+  const copyToClipboard = async (text) => {
+    if (!text) return;
+    try {
+      await navigator.clipboard.writeText(text);
+      // simple feedback could be added (snackbar)
+    } catch (err) {
+      console.error('copy failed', err);
+    }
   };
 
   const handleChangeStatus = (e, orderId) => {
@@ -208,6 +261,8 @@ const Orders = () => {
   //       setSingleOrder(res.products);
   //     });
   //   };
+
+  console.log("orderRider", selectedOrderForRider);
 
   return (
     <>
@@ -293,7 +348,8 @@ const Orders = () => {
                             </TableCell>
                             <TableCell>{order?.pincode}</TableCell>
                             <TableCell style={{ minWidth: columns.minWidth }}>
-                              <MdOutlineCurrencyRupee /> {order?.amount}
+                              {/* <MdOutlineCurrencyRupee /> */}
+                              ₱{order?.amount}
                             </TableCell>
                             <TableCell style={{ minWidth: columns.minWidth }}>
                               <MdOutlineEmail /> {order?.email}
@@ -316,11 +372,28 @@ const Orders = () => {
                                 </MenuItem>
 
                                 <MenuItem value="pending">Pending</MenuItem>
-
                                 <MenuItem value="confirm">Confirm</MenuItem>
-
+                                <MenuItem value="in-transit">In Transit</MenuItem>
                                 <MenuItem value="delivered">Delivered</MenuItem>
                               </Select>
+                            </TableCell>
+                            <TableCell style={{ minWidth: columns.minWidth }}>
+                              <div style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                                <div style={{ flex: 1 }}>
+                                  {order?.deliveryRider ? (
+                                    <div style={{ fontSize: 12 }}>
+                                      Assigned: {order?.deliveryRider.name}
+                                    </div>
+                                  ) : (
+                                    <div style={{ fontSize: 12, color: '#666' }}>No rider</div>
+                                  )}
+                                </div>
+                                <div>
+                                  <Button size="small" variant="outlined" onClick={() => openRiderModal(order)}>
+                                    View / Assign
+                                  </Button>
+                                </div>
+                              </div>
                             </TableCell>
                             <TableCell style={{ minWidth: columns.minWidth }}>
                               <MdOutlineDateRange />{" "}
@@ -389,6 +462,76 @@ const Orders = () => {
                 })}
             </tbody>
           </table>
+        </div>
+      </Dialog>
+      <Dialog open={isRiderModalOpen} className="riderModal" onClose={() => setIsRiderModalOpen(false)}>
+        {/* <Button className="close_" onClick={() => setIsRiderModalOpen(false)}>
+          <MdClose />
+        </Button> */}
+        <h4 className="mb-1 font-weight-bold p-2 mb-4 text-center">Delivery Rider & QR</h4>
+
+        <div style={{ padding: 16, minWidth: 420 }}>
+          {selectedOrderForRider ? (
+            <>
+              <div style={{ marginBottom: 12 }}>
+                <strong>Order:</strong> {selectedOrderForRider._id}
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                <strong>Current Rider:</strong>{' '}
+                {selectedOrderForRider.deliveryRider || 'Not assigned'}
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                <strong>QR:</strong>
+                <div style={{ marginTop: 8 }}>
+                  {selectedOrderForRider.qr ? (
+                    <div>
+                      <img src={selectedOrderForRider.qr} alt="order-qr" style={{ maxWidth: 200 }} />
+                      <div style={{ marginTop: 8 }}>
+                        <Button size="small" variant="outlined" onClick={() => copyToClipboard(selectedOrderForRider.riderToken)}>
+                          Copy Token
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div style={{ color: '#777' }}>QR not generated</div>
+                  )}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: 12 }}>
+                <strong>Assign Rider</strong>
+                <div style={{ marginTop: 8 }}>
+                  <Select
+                    value={selectedRiderId || ''}
+                    onChange={(e) => setSelectedRiderId(e.target.value)}
+                    displayEmpty
+                    size="small"
+                    fullWidth
+                  >
+                    <MenuItem value="">
+                      <em>None</em>
+                    </MenuItem>
+                    {riders?.map((r) => (
+                      <MenuItem key={r._id} value={r._id}>
+                        {r.name} - {r.email}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', gap: 8 }}>
+                <Button disabled={assigningLoading} variant="contained" color="primary" onClick={handleAssignRider}>
+                  {assigningLoading ? 'Assigning...' : 'Assign Rider'}
+                </Button>
+                <Button variant="outlined" onClick={() => setIsRiderModalOpen(false)}>Close</Button>
+              </div>
+            </>
+          ) : (
+            <div style={{ padding: 12 }}>Loading...</div>
+          )}
         </div>
       </Dialog>
     </>

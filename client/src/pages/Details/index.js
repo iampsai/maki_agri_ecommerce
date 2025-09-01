@@ -28,6 +28,7 @@ const DetailsPage = (props) => {
   const [smlImageSize, setSmlImageSize] = useState([150, 150]);
 
   const [activeSize, setActiveSize] = useState(null);
+  const [selectedVariant, setSelectedVariant] = useState(null); // { type: 'size'|'weight'|'ram', value: 'M' }
   const [tabError, setTabError] = useState(false);
 
   const [inputValue, setinputValue] = useState(1);
@@ -96,8 +97,38 @@ const DetailsPage = (props) => {
   };
 
   const isActive = (index) => {
+    // legacy: keep for compatibility but not used for highlighting
     setActiveSize(index);
     setTabError(false);
+  };
+
+  const handleSelectVariant = (type, value) => {
+    setSelectedVariant({ type, value });
+    setTabError(false);
+  };
+
+  const getVariantPrice = (type, value) => {
+    if (!currentProduct?.variantPrices || !type || !value) return null;
+    const vp = currentProduct.variantPrices.find(
+      (v) => v.type === type && String(v.value) === String(value)
+    );
+    return vp || null;
+  };
+
+  const getDisplayedPrice = () => {
+    if (selectedVariant) {
+      const vp = getVariantPrice(selectedVariant.type, selectedVariant.value);
+      if (vp) return vp.price;
+    }
+    return currentProduct?.price;
+  };
+
+  const getDisplayedOldPrice = () => {
+    if (selectedVariant) {
+      const vp = getVariantPrice(selectedVariant.type, selectedVariant.value);
+      if (vp) return vp.oldPrice;
+    }
+    return currentProduct?.oldPrice;
   };
 
   useEffect(() => {
@@ -111,9 +142,15 @@ const DetailsPage = (props) => {
         res?.productWeight.length === 0 &&
         res?.size.length === 0
       ) {
-        setActiveSize(1);
+        // no variants
+        setSelectedVariant(null);
+      } else {
+        // if exactly one option in a group, preselect it for convenience
+        if (res?.size?.length === 1) setSelectedVariant({ type: 'size', value: res.size[0] });
+        else if (res?.productWeight?.length === 1) setSelectedVariant({ type: 'weight', value: res.productWeight[0] });
+        else if (res?.productRam?.length === 1) setSelectedVariant({ type: 'ram', value: res.productRam[0] });
       }
-
+      
       fetchDataFromApi(
         `/api/products/subCatId?subCatId=${
           res?.subCatId
@@ -147,7 +184,11 @@ const DetailsPage = (props) => {
 
   const addtoCart = () => {
     // Only check size if the product has size options
-    if (currentProduct?.size && currentProduct.size.length > 0 && activeSize === null) {
+    // require selection if product has variants
+    if (
+      (currentProduct?.size && currentProduct.size.length > 0 || currentProduct?.productWeight?.length > 0 || currentProduct?.productRam?.length > 0) &&
+      !selectedVariant
+    ) {
       setTabError(true);
       return;
     }
@@ -155,15 +196,20 @@ const DetailsPage = (props) => {
     setTabError(false);
     const user = JSON.parse(localStorage.getItem("user"));
 
+    const priceToUse = selectedVariant
+      ? (getVariantPrice(selectedVariant.type, selectedVariant.value)?.price ?? currentProduct?.price)
+      : currentProduct?.price;
+
     cartFields.productTitle = currentProduct?.name;
     cartFields.image = currentProduct?.images[0];
     cartFields.rating = currentProduct?.rating;
-    cartFields.price = currentProduct?.price;
-    cartFields.quantity = productQuantity;
-    cartFields.subTotal = parseInt(currentProduct?.price * productQuantity);
+    cartFields.price = priceToUse;
+    cartFields.quantity = productQuantity || 1;
+    cartFields.subTotal = parseInt(priceToUse * (productQuantity || 1));
     cartFields.productId = currentProduct?.id;
     cartFields.countInStock = currentProduct?.countInStock;
     cartFields.userId = user?.userId;
+    cartFields.variant = selectedVariant || null; // store variant selection
 
     context.addToCart(cartFields);
   };
@@ -311,15 +357,11 @@ const DetailsPage = (props) => {
 
               <div className="priceSec d-flex align-items-center mb-3">
                 <span className="text-g priceLarge">
-                ₱ {currentProduct?.price}
+                  ₱ {getDisplayedPrice()}
                 </span>
                 <div className="ml-3 d-flex flex-column">
-                  <span className="text-org">
-                    {currentProduct?.discount}% Off
-                  </span>
-                  <span className="text-light oldPrice">
-                  ₱ {currentProduct?.oldPrice}
-                  </span>
+                  <span className="text-org">{currentProduct?.discount}% Off</span>
+                  <span className="text-light oldPrice">₱ {getDisplayedOldPrice()}</span>
                 </div>
               </div>
 
@@ -345,12 +387,10 @@ const DetailsPage = (props) => {
                   >
                     {currentProduct?.size?.map((size, index) => {
                       return (
-                        <li className="list-inline-item">
+                        <li className="list-inline-item" key={index}>
                           <a
-                            className={`tag ${
-                              activeSize === index ? "active" : ""
-                            }`}
-                            onClick={() => isActive(index)}
+                            className={`tag ${selectedVariant && selectedVariant.type === 'size' && selectedVariant.value === size ? 'active' : ''}`}
+                            onClick={() => handleSelectVariant('size', size)}
                           >
                             {size}
                           </a>
@@ -367,12 +407,10 @@ const DetailsPage = (props) => {
                   <ul className="list list-inline mb-0 pl-4">
                     {currentProduct?.productRam?.map((productRam, index) => {
                       return (
-                        <li className="list-inline-item">
-                          <a 
-                            className={`tag ${
-                              activeSize === index ? "active" : ""
-                            }`}
-                            onClick={() => isActive(index)}
+                        <li className="list-inline-item" key={index}>
+                          <a
+                            className={`tag ${selectedVariant && selectedVariant.type === 'ram' && selectedVariant.value === productRam ? 'active' : ''}`}
+                            onClick={() => handleSelectVariant('ram', productRam)}
                           >
                             {productRam}
                           </a>
@@ -392,10 +430,8 @@ const DetailsPage = (props) => {
                         return (
                           <li className="list-inline-item">
                             <a
-                              className={`tag ${
-                                activeSize === index ? "active" : ""
-                              }`}
-                              onClick={() => isActive(index)}
+                              className={`tag ${selectedVariant && selectedVariant.type === 'weight' && selectedVariant.value === productWeight ? 'active' : ''}`}
+                              onClick={() => handleSelectVariant('weight', productWeight)}
                             >
                               {productWeight}
                             </a>

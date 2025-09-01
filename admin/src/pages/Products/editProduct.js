@@ -114,7 +114,9 @@ const EditUpload = () => {
     productRam: [],
     size: [],
     productWeight: [],
+    variantPrices: [],
     location: [],
+    expiryDate: "",
   });
 
   const productImages = useRef();
@@ -189,7 +191,11 @@ const EditUpload = () => {
         productRam: res.productRam,
         size: res.size,
         productWeight: res.productWeight,
+        variantPrices: res.variantPrices || [],
         location: res.location,
+        expiryDate: res.expiryDate
+          ? new Date(res.expiryDate).toISOString().split("T")[0]
+          : "",
       });
 
       setSelectedLocation(res.location);
@@ -303,6 +309,26 @@ const EditUpload = () => {
     }));
   };
 
+  // variantPrices helpers
+  const addVariant = () => {
+    const arr = formFields.variantPrices ? [...formFields.variantPrices] : [];
+    arr.push({ type: "weight", value: "", price: 0, oldPrice: 0 });
+    setFormFields(() => ({ ...formFields, variantPrices: arr }));
+  };
+
+  const updateVariantField = (index, key, value) => {
+    const arr = formFields.variantPrices ? [...formFields.variantPrices] : [];
+    if (!arr[index]) return;
+    arr[index][key] = value;
+    setFormFields(() => ({ ...formFields, variantPrices: arr }));
+  };
+
+  const removeVariant = (index) => {
+    const arr = formFields.variantPrices ? [...formFields.variantPrices] : [];
+    arr.splice(index, 1);
+    setFormFields(() => ({ ...formFields, variantPrices: arr }));
+  };
+
   const selectCat = (cat, id) => {
     formFields.catName = cat;
     formFields.catId = id;
@@ -366,9 +392,9 @@ const EditUpload = () => {
             });
 
 
-            uniqueArray = img_arr.filter(
-              (item, index) => img_arr.indexOf(item) === index
-            );
+          uniqueArray = img_arr.filter(
+            (item, index) => img_arr.indexOf(item) === index
+          );
 
 
           setPreviews(uniqueArray);
@@ -390,24 +416,24 @@ const EditUpload = () => {
 
 
   const removeImg = async (indexToRemove, imgUrl, img_id) => {
-    const userInfo = JSON.parse(localStorage.getItem("user"));
-    if (userInfo?.email === "rinkuv37@gmail.com") {
-    setIsImageRemove(true);
-    const previews_arr = previews;
+  const userInfo = JSON.parse(localStorage.getItem("user"));
+  if (userInfo?.isAdmin === true) {
+      setIsImageRemove(true);
+      const previews_arr = previews;
 
-    const imgIndex = previews_arr.indexOf(imgUrl);
+      const imgIndex = previews_arr.indexOf(imgUrl);
 
-    deleteImages(`/api/products/deleteImage?img=${imgUrl}`).then((res) => {
-      const newArray = previews_arr.filter((_, index) => index !== imgIndex);
-      setPreviews(newArray);
-    });
-  }  else {
-    context.setAlertBox({
-      open: true,
-      error: true,
-      msg: "Only Admin can delete Product",
-    });
-  }
+      deleteImages(`/api/products/deleteImage?img=${imgUrl}`).then((res) => {
+        const newArray = previews_arr.filter((_, index) => index !== imgIndex);
+        setPreviews(newArray);
+      });
+    } else {
+      context.setAlertBox({
+        open: true,
+        error: true,
+        msg: "Only Admin can delete Product",
+      });
+    }
   };
 
   useEffect(() => {
@@ -549,6 +575,15 @@ const EditUpload = () => {
       return false;
     }
 
+    if (!formFields.expiryDate) {
+      context.setAlertBox({
+        open: true,
+        msg: "Please select the product expiry date",
+        error: true,
+      });
+      return false;
+    }
+
     if (previews.length === 0) {
       context.setAlertBox({
         open: true,
@@ -560,7 +595,13 @@ const EditUpload = () => {
 
     setIsLoading(true);
 
-    editData(`/api/products/${id}`, formFields).then((res) => {
+    const payload = {
+      ...formFields,
+      location: selectedLocation || formFields.location,
+      expiryDate: formFields.expiryDate || null,
+    };
+
+    editData(`/api/products/${id}`, payload).then((res) => {
       context.setAlertBox({
         open: true,
         msg: "The product is updated!",
@@ -573,6 +614,8 @@ const EditUpload = () => {
       history("/products");
     });
   };
+
+  console.log("formFields",formFields);
 
   return (
     <>
@@ -857,6 +900,20 @@ const EditUpload = () => {
                 </div>
 
                 <div className="row">
+                  <div className="col-md-4">
+                    <div className="form-group">
+                      <h6>EXPIRATION DATE</h6>
+                      <input
+                        type="date"
+                        name="expiryDate"
+                        value={formFields.expiryDate}
+                        onChange={inputChange}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="row">
                   {selectedLocation?.length !== 0 && (
                     <div className="col-md-12">
                       <div className="form-group">
@@ -875,6 +932,51 @@ const EditUpload = () => {
                     </div>
                   )}
                 </div>
+
+                <div className="row mt-3">
+                  <div className="col-12">
+                    <h6>VARIANT PRICES (optional)</h6>
+                    <div style={{ border: '1px dashed #ddd', padding: 12, borderRadius: 6 }}>
+                      {(formFields.variantPrices || []).map((v, idx) => (
+                        <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                          <div className="form-group">
+                            <h6>TYPE</h6>
+                            <Select
+                              value={v.type}
+                              onChange={(e) => updateVariantField(idx, 'type', e.target.value)}
+                            >
+                              <MenuItem value="weight">Weight</MenuItem>
+                              <MenuItem value="size">Size</MenuItem>
+                              <MenuItem value="other">Other</MenuItem>
+                            </Select>
+                          </div>
+                          <div className="form-group">
+                            <h6>VARIANT</h6>
+                            <input placeholder="value (e.g. 100g, M)" value={v.value} onChange={(e) => updateVariantField(idx, 'value', e.target.value)} />
+                          </div>
+                          <div className="form-group">
+                            <h6>PRICE</h6>
+                            <input type="number" placeholder="price" value={v.price} onChange={(e) => updateVariantField(idx, 'price', Number(e.target.value))} />
+                          </div>
+                          <div className="form-group">
+                            <h6>OLD PRICE</h6>
+                            <input type="number" placeholder="oldPrice" value={v.oldPrice} onChange={(e) => updateVariantField(idx, 'oldPrice', Number(e.target.value))} />
+                          </div>
+                          <div className="form-group" style={{ justifyContent: 'center' }}>
+                            <h6 style={{ textAlign: 'center' }}>ACTION</h6>
+                            <Button type="button" variant="outlined" onClick={() => removeVariant(idx)}>
+                              Remove
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+
+                      <div>
+                        <Button type="button" variant="contained" onClick={addVariant}>Add Variant Price</Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -884,28 +986,28 @@ const EditUpload = () => {
               <h5 class="mb-4">Media And Published</h5>
 
               <div className="imgUploadBox d-flex align-items-center">
-              {previews?.length !== 0 &&
-                previews?.map((img, index) => {
-                  return (
-                    <div className="uploadBox" key={index}>
-                      <span
-                        className="remove"
-                        disabled={isImageRemove === true ? true : false}
-                        onClick={() => removeImg(index, img)}
-                      >
-                        <IoCloseSharp />
-                      </span>
-                      <div className="box">
-                        <LazyLoadImage
-                          alt={"image"}
-                          effect="blur"
-                          className="w-100"
-                          src={img}
-                        />
+                {previews?.length !== 0 &&
+                  previews?.map((img, index) => {
+                    return (
+                      <div className="uploadBox" key={index}>
+                        <span
+                          className="remove"
+                          disabled={isImageRemove === true ? true : false}
+                          onClick={() => removeImg(index, img)}
+                        >
+                          <IoCloseSharp />
+                        </span>
+                        <div className="box">
+                          <LazyLoadImage
+                            alt={"image"}
+                            effect="blur"
+                            className="w-100"
+                            src={img}
+                          />
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
+                    );
+                  })}
 
 
                 <div className="uploadBox">

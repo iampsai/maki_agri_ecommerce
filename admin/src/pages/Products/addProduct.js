@@ -112,7 +112,9 @@ const ProductUpload = () => {
     productRam: [],
     size: [],
     productWeight: [],
+    variantPrices: [],
     location: [],
+    expiryDate: null,
   });
 
   const productImages = useRef();
@@ -123,8 +125,8 @@ const ProductUpload = () => {
 
   useEffect(() => {
     const newData = {
-      value:'All',
-      label:'All'
+      value: 'All',
+      label: 'All'
     };
     const updatedArray = [...context?.countryList]; // Clone the array to avoid direct mutation
     updatedArray.unshift(newData); // Prepend data
@@ -191,7 +193,7 @@ const ProductUpload = () => {
     formFields.subCatName = subCatName;
   };
 
-  
+
 
   const handleChangeProductWeight = (event) => {
     // setProductWeight(event.target.value);
@@ -244,6 +246,26 @@ const ProductUpload = () => {
     }));
   };
 
+  // variantPrices helpers: simple array of { type, value, price, oldPrice }
+  const addVariant = () => {
+    const arr = formFields.variantPrices ? [...formFields.variantPrices] : [];
+    arr.push({ type: "weight", value: "", price: 0, oldPrice: 0 });
+    setFormFields(() => ({ ...formFields, variantPrices: arr }));
+  };
+
+  const updateVariantField = (index, key, value) => {
+    const arr = formFields.variantPrices ? [...formFields.variantPrices] : [];
+    if (!arr[index]) return;
+    arr[index][key] = value;
+    setFormFields(() => ({ ...formFields, variantPrices: arr }));
+  };
+
+  const removeVariant = (index) => {
+    const arr = formFields.variantPrices ? [...formFields.variantPrices] : [];
+    arr.splice(index, 1);
+    setFormFields(() => ({ ...formFields, variantPrices: arr }));
+  };
+
   const selectCat = (cat, id) => {
     formFields.catName = cat;
     formFields.catId = id;
@@ -261,124 +283,124 @@ const ProductUpload = () => {
 
   let img_arr = [];
   let uniqueArray = [];
-  let selectedImages=[];
+  let selectedImages = [];
 
   const onChangeFile = async (e, apiEndPoint) => {
-      try {
-        const files = e.target.files;
-  
-        setUploading(true);
-  
-        //const fd = new FormData();
-        for (var i = 0; i < files.length; i++) {
-          // Validate file type
-          if (
-            files[i] &&
-            (files[i].type === "image/jpeg" ||
-              files[i].type === "image/jpg" ||
-              files[i].type === "image/png" ||
-              files[i].type === "image/webp")
-          ) {
-            const file = files[i];
-            selectedImages.push(file);
-            formdata.append(`images`, file);
-          } else {
+    try {
+      const files = e.target.files;
+
+      setUploading(true);
+
+      //const fd = new FormData();
+      for (var i = 0; i < files.length; i++) {
+        // Validate file type
+        if (
+          files[i] &&
+          (files[i].type === "image/jpeg" ||
+            files[i].type === "image/jpg" ||
+            files[i].type === "image/png" ||
+            files[i].type === "image/webp")
+        ) {
+          const file = files[i];
+          selectedImages.push(file);
+          formdata.append(`images`, file);
+        } else {
+          context.setAlertBox({
+            open: true,
+            error: true,
+            msg: "Please select a valid JPG or PNG image file.",
+          });
+          setUploading(false);
+          return false;
+        }
+      }
+
+      formFields.images = selectedImages;
+    } catch (error) {
+      console.log(error);
+    }
+
+    uploadImage(apiEndPoint, formdata).then((res) => {
+
+      fetchDataFromApi("/api/imageUpload").then((response) => {
+        if (
+          response !== undefined &&
+          response !== null &&
+          response !== "" &&
+          response.length !== 0
+        ) {
+          response.length !== 0 &&
+            response.map((item) => {
+              item?.images.length !== 0 &&
+                item?.images?.map((img) => {
+                  img_arr.push({
+                    id: item?._id,
+                    img: img,
+                  });
+                  //console.log(img)
+                });
+            });
+
+          //setPreviews([]);
+
+
+          uniqueArray = img_arr.filter((item, index, self) =>
+            index === self.findIndex((t) => t.img === item.img)
+          );
+
+          const appendedArray = [...previews, ...img_arr];
+
+          setPreviews(uniqueArray);
+
+          setTimeout(() => {
+            setUploading(false);
+            //img_arr = [];
             context.setAlertBox({
               open: true,
-              error: true,
-              msg: "Please select a valid JPG or PNG image file.",
+              error: false,
+              msg: "Images Uploaded!",
             });
-            setUploading(false);
-            return false;
-          }
+          }, 200);
         }
-  
-        formFields.images = selectedImages;
-      } catch (error) {
-        console.log(error);
-      }
-  
-      uploadImage(apiEndPoint, formdata).then((res) => {
-
-        fetchDataFromApi("/api/imageUpload").then((response) => {
-          if (
-            response !== undefined &&
-            response !== null &&
-            response !== "" &&
-            response.length !== 0
-          ) {
-            response.length !== 0 &&
-              response.map((item) => {
-                item?.images.length !== 0 &&
-                  item?.images?.map((img) => {
-                    img_arr.push({
-                      id: item?._id,
-                      img: img,
-                    });
-                    //console.log(img)
-                  });
-              });
-  
-            //setPreviews([]);
-          
-
-             uniqueArray = img_arr.filter((item, index, self) =>
-              index === self.findIndex((t) => t.img === item.img)
-            );
-  
-            const appendedArray = [...previews, ...img_arr];
-  
-            setPreviews(uniqueArray);
-
-            setTimeout(() => {
-              setUploading(false);
-              //img_arr = [];
-              context.setAlertBox({
-                open: true,
-                error: false,
-                msg: "Images Uploaded!",
-              });
-            }, 200);
-          }
-        });
       });
-    };
+    });
+  };
 
 
   const removeImg = async (indexToRemove, imgUrl, img_id) => {
 
-      setIsImageRemove(true);
-      const previews_arr = previews;
+    setIsImageRemove(true);
+    const previews_arr = previews;
 
-      const imgIndex = previews_arr.indexOf(imgUrl);
+    const imgIndex = previews_arr.indexOf(imgUrl);
 
-      deleteImages(`/api/products/deleteImage?img=${imgUrl}`).then((res) => {
-          context.setAlertBox({
-              open: true,
-              error: false,
-              msg: "Image Deleted!"
-          })
-
-          deleteData(`/api/imageUpload/deleteImage/image/${img_id}`).then((resp)=>{
-              fetchDataFromApi("/api/imageUpload").then((response) => {
-                  const img_array = [];
-                  response?.map((item)=>{
-                      img_array.push({
-                          id:item?.id,
-                          img:item?.images[0]
-                      })
- 
-                  })
-                 // previews_arr.splice(indexToRemove, 1); 
-                  setPreviews([]);
-                  setPreviews(img_array);
-                  setIsImageRemove(false);
-              })
-          });
-          
+    deleteImages(`/api/products/deleteImage?img=${imgUrl}`).then((res) => {
+      context.setAlertBox({
+        open: true,
+        error: false,
+        msg: "Image Deleted!"
       })
 
-  
+      deleteData(`/api/imageUpload/deleteImage/image/${img_id}`).then((resp) => {
+        fetchDataFromApi("/api/imageUpload").then((response) => {
+          const img_array = [];
+          response?.map((item) => {
+            img_array.push({
+              id: item?.id,
+              img: item?.images[0]
+            })
+
+          })
+          // previews_arr.splice(indexToRemove, 1); 
+          setPreviews([]);
+          setPreviews(img_array);
+          setIsImageRemove(false);
+        })
+      });
+
+    })
+
+
 
   }
 
@@ -406,7 +428,9 @@ const ProductUpload = () => {
     formdata.append("productRam", formFields.productRam);
     formdata.append("size", formFields.size);
     formdata.append("productWeight", formFields.productWeight);
+    formdata.append("variantPrices", JSON.stringify(formFields.variantPrices || []));
     formdata.append("location", formFields.location);
+    formdata.append("expiryDate", formFields.expiryDate);
 
     formFields.location = selectedLocation;
 
@@ -513,6 +537,15 @@ const ProductUpload = () => {
       return false;
     }
 
+    if (!formFields.expiryDate) {
+      context.setAlertBox({
+        open: true,
+        msg: "Please add the product expiry date",
+        error: true,
+      });
+      return false;
+    }
+
     if (previews.length === 0) {
       context.setAlertBox({
         open: true,
@@ -524,7 +557,14 @@ const ProductUpload = () => {
 
     setIsLoading(true);
 
-    postData("/api/products/create", formFields).then((res) => {
+    // Build explicit payload to ensure expiryDate (and location) are included
+    const payload = {
+      ...formFields,
+      location: selectedLocation || formFields.location,
+      expiryDate: formFields.expiryDate || null,
+    };
+
+    postData("/api/products/create", payload).then((res) => {
       context.setAlertBox({
         open: true,
         msg: "The product is created!",
@@ -743,7 +783,7 @@ const ProductUpload = () => {
                     </div>
                   </div>
 
-          
+
                 </div>
 
                 <div className="row">
@@ -805,6 +845,55 @@ const ProductUpload = () => {
                       />
                     </div>
                   </div>
+
+                  <div className="col-md-4">
+                    <div className="form-group">
+                      <h6>EXPIRATION DATE</h6>
+                      <input
+                        type="date"
+                        name="expiryDate"
+                        value={formFields.expiryDate}
+                        onChange={inputChange}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="row mt-3">
+                  <div className="col-12">
+                    <h6>VARIANT PRICES (optional)</h6>
+                    <div style={{ border: '1px dashed #ddd', padding: 12, borderRadius: 6 }}>
+                      {(formFields.variantPrices || []).map((v, idx) => (
+                        <div key={idx} style={{ display: 'flex', gap: 8, marginBottom: 8 }}>
+                          <div className="form-group">
+                            <Select value={v.type} onChange={(e) => updateVariantField(idx, 'type', e.target.value)}>
+                              <MenuItem value="weight">Weight</MenuItem>
+                              <MenuItem value="size">Size</MenuItem>
+                              <MenuItem value="other">Other</MenuItem>
+                            </Select>
+                          </div>
+                          <div className="form-group">
+                            <input placeholder="value (e.g. 100g, M)" value={v.value} onChange={(e) => updateVariantField(idx, 'value', e.target.value)} />
+                          </div>
+                          <div className="form-group">
+                            <input type="number" placeholder="price" value={v.price} onChange={(e) => updateVariantField(idx, 'price', Number(e.target.value))} />
+                          </div>
+                          <div className="form-group">
+                            <input type="number" placeholder="oldPrice" value={v.oldPrice} onChange={(e) => updateVariantField(idx, 'oldPrice', Number(e.target.value))} />
+                          </div>
+                          <Button type="button" variant="danger" onClick={() => removeVariant(idx)}>
+                            Remove
+                          </Button>
+                        </div>
+                      ))}
+
+                      <div>
+                        <Button type="button" variant="outlined" onClick={addVariant}>
+                          Add Variant Price
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
               </div>
@@ -816,23 +905,23 @@ const ProductUpload = () => {
               <h5 class="mb-4">Media And Published</h5>
 
               <div className="imgUploadBox d-flex align-items-center">
-              {
-                previews?.length !== 0 && previews?.map((img, index) => {
+                {
+                  previews?.length !== 0 && previews?.map((img, index) => {
                     return (
-                        <div className='uploadBox' key={index}>
-                     
-                            <span className="remove" disabled={isImageRemove === true ? true : false} onClick={() => removeImg(index, img?.img, img?.id)}><IoCloseSharp /></span>
-                            <div className='box'>
-                                <LazyLoadImage
-                                    alt={"image"}
-                                    effect="blur"
-                                    className="w-100"
-                                     src={img?.img} />
-                            </div>
+                      <div className='uploadBox' key={index}>
+
+                        <span className="remove" disabled={isImageRemove === true ? true : false} onClick={() => removeImg(index, img?.img, img?.id)}><IoCloseSharp /></span>
+                        <div className='box'>
+                          <LazyLoadImage
+                            alt={"image"}
+                            effect="blur"
+                            className="w-100"
+                            src={img?.img} />
                         </div>
+                      </div>
                     )
-                })
-            }
+                  })
+                }
 
                 <div className="uploadBox">
                   {uploading === true ? (
